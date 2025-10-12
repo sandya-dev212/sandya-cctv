@@ -38,7 +38,11 @@
           <div class="meta">
             <div class="title"><?= esc($m['name']) ?></div>
             <div class="actions">
-              <button class="btn ghost" onclick="assignToDash('<?= (int)$nvrActive['id'] ?>','<?= esc($m['mid']) ?>')">Assign to Dashboard</button>
+              <button class="btn ghost assign-btn"
+                      data-mid="<?= esc($m['mid']) ?>"
+                      data-nvr="<?= (int)$nvrActive['id'] ?>">
+                Assign to Dashboard
+              </button>
             </div>
           </div>
         </article>
@@ -56,16 +60,28 @@ document.getElementById('btnMappings').addEventListener('click', (e)=>{
   location.href = '/cameras/mappings?dashboard_id=' + encodeURIComponent(id);
 });
 
-async function assignToDash(nvrId, monitorId){
-  const dashId = selDash.value;
-  if (!dashId) { alert('Pilih dashboard dulu.'); return; }
-  const fd = new FormData();
-  fd.append('dashboard_id', dashId);
-  fd.append('nvr_id', nvrId);
-  fd.append('monitor_id', monitorId);
+// assign tanpa alias + auto-disable tombol setelah sukses
+document.querySelectorAll('.assign-btn').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    const dashId = selDash.value;
+    if (!dashId) { alert('Pilih dashboard dulu.'); return; }
+    const fd = new FormData();
+    fd.append('dashboard_id', dashId);
+    fd.append('nvr_id', btn.dataset.nvr);
+    fd.append('monitor_id', btn.dataset.mid);
 
-  const r = await fetch('/cameras/assign', {method:'POST', body:fd});
-  const j = await r.json().catch(()=>({ok:false,msg:'Bad response'}));
-  if (j.ok) alert('OK: mapped'); else alert('Gagal: ' + (j.msg||''));
-}
+    btn.disabled = true; btn.textContent = 'Assigning...';
+    const r = await fetch('/cameras/assign', {method:'POST', body:fd});
+    const j = await r.json().catch(()=>({ok:false,msg:'Bad response'}));
+    if (j.ok) {
+      btn.textContent = 'Assigned';
+      btn.classList.remove('ghost');
+      btn.style.background = '#ef4444';
+      btn.style.color = '#fff';
+    } else {
+      btn.disabled = false; btn.textContent = 'Assign to Dashboard';
+      alert('Gagal: ' + (j.msg||''));
+    }
+  });
+});
 </script>

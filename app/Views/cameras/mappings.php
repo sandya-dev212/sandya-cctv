@@ -24,7 +24,7 @@
     <table class="table">
       <thead>
         <tr>
-          <th style="width:90px">Monitor ID</th>
+          <th style="width:140px">Monitor ID</th>
           <th style="width:160px">Aksi</th>
         </tr>
       </thead>

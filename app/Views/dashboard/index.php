@@ -29,24 +29,28 @@
     <?php foreach ($tiles as $t): ?>
       <article class="card cam" draggable="true"
                data-id="<?= esc($t['id']) ?>"
-               data-hls="<?= esc($t['hls']) ?>">
-        <div class="thumb" style="cursor:move">
+               data-hls="<?= esc($t['hls']) ?>"
+               data-alias="<?= esc($t['alias']) ?>">
+        <div class="thumb" style="cursor:move; position:relative">
           <!-- video langsung (tanpa thumbnail, auto play) -->
           <video class="vid" muted playsinline autoplay
                  style="width:100%;height:100%;object-fit:cover;background:#000"></video>
 
           <!-- fullscreen -->
           <button class="btn ghost" onclick="fsTile(event,this)" title="Fullscreen"
-                  style="position:absolute;right:8px;top:8px">⤢</button>
+                  style="position:absolute;right:8px;top:8px;z-index:3">⤢</button>
 
-          <!-- label -->
-          <span class="chip" title="<?= esc($t['alias']) ?>">
+          <!-- label overlay kiri-atas -->
+          <span class="chip" title="<?= esc($t['alias']) ?>" style="z-index:2">
             <?= esc($t['nvr']) ?> / <?= esc($t['monitor_id']) ?>
           </span>
+
+          <!-- overlay tombol Videos -->
+          <div class="overlay">
+            <a class="btn videos-btn" href="#" onclick="openVideos(this);return false;">Videos (3 hari)</a>
+          </div>
         </div>
-        <div class="meta">
-          <div class="title" title="<?= esc($t['alias']) ?>"><?= esc($t['alias']) ?></div>
-        </div>
+        <!-- NOTE: meta/title bawah DIHAPUS sesuai request -->
       </article>
     <?php endforeach; ?>
   </section>
@@ -127,6 +131,43 @@ function fsTile(ev, btn){
   if (elem.requestFullscreen) elem.requestFullscreen();
   else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
 }
+
+/** Build link Videos dari HLS URL
+ * Contoh pola umum Shinobi:
+ *   {base}/{group}/{api}/hls/{monitor}/s.m3u8
+ *   {base}/{group}/{api}/mjpeg/{monitor}
+ * Regex ambil: base, group, api, monitor
+ */
+function parseFromHls(hlsUrl){
+  try{
+    const u   = new URL(hlsUrl);
+    const seg = u.pathname.split('/').filter(Boolean);
+    // cari indeks group/api
+    // skenario: ["{group}","{api}","hls","{monitor}",...]
+    for (let i=0;i<seg.length-3;i++){
+      const group = seg[i];
+      const api   = seg[i+1];
+      const kind  = seg[i+2]; // hls/mjpeg/monitors
+      const mon   = seg[i+3];
+      if (group && api && mon && (kind==='hls' || kind==='mjpeg' || kind==='monitors')) {
+        const base = u.origin; // {scheme}://{host}
+        return { base, g: group, k: api, mon };
+      }
+    }
+  }catch(e){}
+  return null;
+}
+
+function openVideos(btn){
+  const card = btn.closest('.cam');
+  const hls  = card?.dataset?.hls || '';
+  const alias= card?.dataset?.alias || '';
+  const p = parseFromHls(hls);
+  if(!p){ alert('Tidak bisa membentuk link Videos dari URL HLS.'); return; }
+  const qs = new URLSearchParams({ base:p.base, g:p.g, k:p.k, mon:p.mon, cam:alias });
+  window.open('/videos?'+qs.toString(), '_blank');
+}
+
 const grid = document.getElementById('grid');
 let dragSrc = null;
 grid?.addEventListener('dragstart', (e) => {
@@ -182,4 +223,15 @@ perSel?.addEventListener('change', () => {
 
 <style>
 .cam.dragging { opacity:.6; transform:scale(.98); }
+/* overlay videos */
+.overlay {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; transition:opacity .2s; background:rgba(0,0,0,.25); z-index:1;
+}
+.thumb:hover .overlay { opacity:1; }
+.videos-btn {
+  background:#7c3aed; color:#fff; text-decoration:none;
+  padding:10px 16px; border-radius:10px; font-weight:700;
+}
 </style>

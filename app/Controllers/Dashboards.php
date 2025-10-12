@@ -20,7 +20,6 @@ class Dashboards extends BaseController
         if (!session('isLoggedIn')) return redirect()->to('/login')->send();
         $role = (string)(session('role') ?? 'user');
         if (!in_array($role, ['admin','superadmin'], true)) {
-            // larang user biasa
             return redirect()->to('/dashboard')->send();
         }
         return null;
@@ -33,7 +32,6 @@ class Dashboards extends BaseController
 
         $dashboards = $this->db->table('dashboards')->orderBy('name')->get()->getResultArray();
 
-        // ambil users yang ter-assign per dashboard
         $assigns = [];
         if ($dashboards) {
             $ids = array_column($dashboards, 'id');
@@ -62,10 +60,8 @@ class Dashboards extends BaseController
     {
         if ($r = $this->mustAdmin()) return $r;
 
-        // hanya user role 'user' yang bisa di-assign
         $users = $this->db->table('users')
-            ->select('id, username, full_name')
-            ->where('role', 'user')
+            ->select('id, username, full_name, role')
             ->where('is_active', 1)
             ->orderBy('username')
             ->get()->getResultArray();
@@ -94,6 +90,24 @@ class Dashboards extends BaseController
             return redirect()->back()->with('error','Nama wajib diisi');
         }
 
+        // ENFORCE: user role 'user' maksimal 1 dashboard
+        if ($sel) {
+            $users = $this->db->table('users')->select('id, role')->whereIn('id', $sel)->get()->getResultArray();
+            $userIds = array_map(fn($r)=>(int)$r['id'], array_filter($users, fn($r)=>($r['role'] ?? 'user') === 'user'));
+            if ($userIds) {
+                $counts = $this->db->table('user_dashboards')
+                    ->select('user_id, COUNT(*) AS c')
+                    ->whereIn('user_id', $userIds)
+                    ->groupBy('user_id')
+                    ->get()->getResultArray();
+                foreach ($counts as $row) {
+                    if ((int)$row['c'] >= 1) {
+                        return redirect()->back()->with('error', 'Setiap user biasa hanya boleh 1 dashboard. User ID: '.$row['user_id']);
+                    }
+                }
+            }
+        }
+
         $this->db->table('dashboards')->insert([
             'name'       => $name,
             'created_at' => date('Y-m-d H:i:s'),
@@ -101,7 +115,6 @@ class Dashboards extends BaseController
         ]);
         $dashId = (int)$this->db->insertID();
 
-        // simpan assignments
         $this->syncAssignments($dashId, $sel);
 
         return redirect()->to('/dashboards');
@@ -116,8 +129,7 @@ class Dashboards extends BaseController
         if (!$dash) return redirect()->to('/dashboards');
 
         $users = $this->db->table('users')
-            ->select('id, username, full_name')
-            ->where('role', 'user')
+            ->select('id, username, full_name, role')
             ->where('is_active', 1)
             ->orderBy('username')
             ->get()->getResultArray();
@@ -153,6 +165,26 @@ class Dashboards extends BaseController
             return redirect()->back()->with('error','Nama wajib diisi');
         }
 
+        // ENFORCE saat update juga: user role 'user' maksimal 1 dashboard
+        if ($sel) {
+            $users   = $this->db->table('users')->select('id, role')->whereIn('id', $sel)->get()->getResultArray();
+            $userIds = array_map(fn($r)=>(int)$r['id'], array_filter($users, fn($r)=>($r['role'] ?? 'user') === 'user'));
+            if ($userIds) {
+                // hitung kepemilikan selain dashboard ini
+                $counts = $this->db->table('user_dashboards')
+                    ->select('user_id, COUNT(*) AS c')
+                    ->whereIn('user_id', $userIds)
+                    ->where('dashboard_id !=', $id)
+                    ->groupBy('user_id')
+                    ->get()->getResultArray();
+                foreach ($counts as $row) {
+                    if ((int)$row['c'] >= 1) {
+                        return redirect()->back()->with('error', 'Setiap user biasa hanya boleh 1 dashboard. User ID: '.$row['user_id']);
+                    }
+                }
+            }
+        }
+
         $this->db->table('dashboards')->where('id', $id)->update([
             'name'       => $name,
             'updated_at' => date('Y-m-d H:i:s'),
@@ -170,7 +202,6 @@ class Dashboards extends BaseController
 
         $id = (int)$id;
 
-        // hapus mapping & assignments dulu (FK-safe)
         $this->db->table('dashboard_monitors')->where('dashboard_id', $id)->delete();
         $this->db->table('user_dashboards')->where('dashboard_id', $id)->delete();
         $this->db->table('dashboards')->where('id', $id)->delete();
@@ -178,7 +209,7 @@ class Dashboards extends BaseController
         return redirect()->to('/dashboards');
     }
 
-    /** optional: lihat isi dashboard (pakai list mapping) */
+    /** view isi dashboard (opsional) */
     public function view($id)
     {
         if (!session('isLoggedIn')) return redirect()->to('/login');
