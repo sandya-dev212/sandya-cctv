@@ -59,12 +59,10 @@ document.getElementById('btnMappings').addEventListener('click', (e)=>{
 async function assignToDash(nvrId, monitorId){
   const dashId = selDash.value;
   if (!dashId) { alert('Pilih dashboard dulu.'); return; }
-  const alias = prompt('Alias (optional):', '');
   const fd = new FormData();
   fd.append('dashboard_id', dashId);
   fd.append('nvr_id', nvrId);
   fd.append('monitor_id', monitorId);
-  fd.append('alias', alias ?? '');
 
   const r = await fetch('/cameras/assign', {method:'POST', body:fd});
   const j = await r.json().catch(()=>({ok:false,msg:'Bad response'}));

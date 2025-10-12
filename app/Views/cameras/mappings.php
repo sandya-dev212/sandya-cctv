@@ -24,9 +24,7 @@
     <table class="table">
       <thead>
         <tr>
-          <th style="width:90px">ID</th>
-          <th>Alias</th>
-          <th style="width:140px">Sort</th>
+          <th style="width:90px">Monitor ID</th>
           <th style="width:160px">Aksi</th>
         </tr>
       </thead>
@@ -34,10 +32,7 @@
         <?php foreach ($rows as $r): ?>
           <tr data-id="<?= (int)$r['id'] ?>">
             <td><?= esc($r['monitor_id']) ?></td>
-            <td><input class="inp-alias" value="<?= esc($r['alias'] ?? '') ?>" placeholder="alias (opsional)"></td>
-            <td><input class="inp-sort" type="number" value="<?= (int)$r['sort_order'] ?>"></td>
-            <td style="display:flex;gap:6px">
-              <button class="btn ghost btn-save">Save</button>
+            <td>
               <button class="btn" style="background:#ef4444" onclick="return delRow(this)">Delete</button>
             </td>
           </tr>
@@ -48,39 +43,12 @@
 <?php endif; ?>
 
 <script>
-// Tombol Open: pastiin redirect dengan query dashboard_id (lebih tahan terhadap base_url/index.php)
 document.getElementById('btnOpen')?.addEventListener('click', ()=>{
   const id = document.getElementById('dashboard_id')?.value || '';
   if (!id) return;
   location.href = '/cameras/mappings?dashboard_id=' + encodeURIComponent(id);
 });
 
-// Save masing-masing baris
-document.querySelectorAll('.btn-save').forEach(btn=>{
-  btn.addEventListener('click', async (e)=>{
-    e.preventDefault();
-    const tr    = e.target.closest('tr');
-    const id    = tr.dataset.id;
-    const alias = tr.querySelector('.inp-alias').value;
-    const sort  = tr.querySelector('.inp-sort').value;
-
-    const fd = new FormData();
-    fd.append('id', id);
-    fd.append('alias', alias);
-    fd.append('sort_order', sort);
-
-    const r = await fetch('/cameras/mappings/update', { method:'POST', body: fd });
-    const j = await r.json().catch(()=>({ ok:false }));
-    if (j.ok) {
-      e.target.textContent = 'Saved';
-      setTimeout(()=> e.target.textContent = 'Save', 800);
-    } else {
-      alert('Gagal menyimpan');
-    }
-  });
-});
-
-// Hapus baris mapping
 async function delRow(btn){
   if (!confirm('Hapus mapping ini?')) return false;
   const tr = btn.closest('tr');

@@ -52,4 +52,10 @@ $routes->get ('users/(:num)/edit',    'Users::edit/$1');
 $routes->post('users/(:num)/update',  'Users::update/$1');
 $routes->post('users/(:num)/delete',  'Users::delete/$1');
 
+// DEBUGGING
 $routes->get('debug/dashboard_check', 'Debug::dashboard_check');
+
+// PATCH START (Ucok) — Videos page & data proxy
+$routes->get('videos',       'Videos::index');   // UI list rekaman
+$routes->get('videos/data',  'Videos::data');    // proxy Get Videos Shinobi (JSON)
+// PATCH END

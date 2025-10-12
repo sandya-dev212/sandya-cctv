@@ -5,9 +5,17 @@
 <section class="grid">
   <?php foreach ($cards as $c): ?>
     <article class="card">
-      <div class="thumb">
+      <div class="thumb" style="position:relative">
         <img src="<?= esc($c['snapshot']) ?>" alt="<?= esc($c['alias']) ?>" onerror="this.src='/assets/no-thumb.png'">
         <span class="chip"><?= esc($c['nvr_name']) ?> / <?= esc($c['monitor_id']) ?></span>
+
+        <!-- PATCH: overlay tombol Videos -->
+        <div class="overlay">
+          <a class="btn videos-btn"
+             href="/videos?base=<?= urlencode($c['nvr_base_url'] ?? '') ?>&g=<?= urlencode($c['group_key'] ?? '') ?>&k=<?= urlencode($c['api_key'] ?? '') ?>&mon=<?= urlencode($c['monitor_id']) ?>&cam=<?= urlencode($c['alias'] ?? $c['monitor_id']) ?>">
+            Videos (3 hari)
+          </a>
+        </div>
       </div>
       <div class="meta">
         <div class="title"><?= esc($c['alias']) ?></div>
@@ -32,7 +40,6 @@ function openHls(url){
         <p style="color:#94a3b8;margin-top:8px">URL: ${url}</p>
       </div>
     `);
-    // load HLS.js dinamis
     const s=document.createElement('script');
     s.src="https://cdn.jsdelivr.net/npm/hls.js@latest";
     s.onload=()=>{
@@ -60,3 +67,16 @@ function removeMap(id){
     .catch(()=> alert('Network error'));
 }
 </script>
+
+<style>
+.overlay {
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .2s;background:rgba(0,0,0,.25);
+}
+.thumb:hover .overlay { opacity:1; }
+.videos-btn {
+  background:#7c3aed;color:#fff;text-decoration:none;
+  padding:10px 16px;border-radius:10px;font-weight:700;
+}
+</style>
