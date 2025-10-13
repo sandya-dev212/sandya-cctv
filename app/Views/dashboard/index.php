@@ -23,20 +23,17 @@
 <?php if (empty($tiles)): ?>
   <p style="color:#94a3b8">Belum ada kamera untuk ditampilkan.</p>
 <?php else: ?>
-
-  <!-- GRID autoplay + drag n drop + resizable -->
   <section id="grid" class="grid">
     <?php foreach ($tiles as $t): ?>
       <article class="card cam" draggable="true"
                data-id="<?= esc($t['id']) ?>"
                data-hls="<?= esc($t['hls']) ?>"
                data-alias="<?= esc($t['alias']) ?>"
-               data-nvr-id="<?= (int)$t['nvr_id'] ?>"
+               data-nvr-id="<?= (int)($t['nvr_id'] ?? 0) ?>"
                data-mon="<?= esc($t['monitor_id']) ?>"
                style="--w:1;--h:1">
-        <div class="thumb" style="cursor:move; position:relative">
-          <video class="vid" muted playsinline autoplay
-                 style="width:100%;height:100%;object-fit:cover;background:#000"></video>
+        <div class="thumb">
+          <video class="vid" muted playsinline autoplay></video>
 
           <!-- fullscreen -->
           <button class="btn ghost fs-btn" onclick="fsTile(event,this)" title="Fullscreen">⤢</button>
@@ -46,12 +43,10 @@
             <?= esc($t['nvr']) ?> / <?= esc($t['monitor_id']) ?>
           </span>
 
-          <!-- actions (hidden; slide-in on hover) -->
+          <!-- actions (hidden; slide-in on hover/tap) -->
           <div class="actions">
             <a class="btn videos-btn" href="#" onclick="openVideos(this);return false;">Videos</a>
-            <div class="size-group">
-              <button class="btn sBtn" title="Resize" onclick="cycleSize(this);return false;">⇲</button>
-            </div>
+            <button class="btn sBtn" title="Resize" onclick="cycleSize(this);return false;">⇲</button>
           </div>
         </div>
       </article>
@@ -101,39 +96,34 @@
   </div>
 <?php endif; ?>
 
-<!-- HLS -->
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
 <script>
 /* ====== HLS attach ====== */
 function attachHls(videoEl, url){
   if (!videoEl) return null;
+  videoEl.style.width = '100%';
+  videoEl.style.height = '100%';
+  videoEl.style.objectFit = 'cover';
+  videoEl.style.background = '#000';
   if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-    videoEl.src = url;
-    videoEl.muted = true;
-    videoEl.play().catch(()=>{});
+    videoEl.src = url; videoEl.muted = true; videoEl.play().catch(()=>{});
     return {type:'native'};
   } else if (window.Hls && window.Hls.isSupported()) {
     const hls = new Hls({liveDurationInfinity:true});
-    hls.loadSource(url);
-    hls.attachMedia(videoEl);
-    videoEl.muted = true;
-    videoEl.play().catch(()=>{});
+    hls.loadSource(url); hls.attachMedia(videoEl);
+    videoEl.muted = true; videoEl.play().catch(()=>{});
     return {type:'hls', hls};
-  } else {
-    return null;
   }
+  return null;
 }
 document.querySelectorAll('.cam').forEach(card => {
-  const url = card.dataset.hls;
-  const vid = card.querySelector('.vid');
-  card._hlsObj = attachHls(vid, url);
+  card._hlsObj = attachHls(card.querySelector('.vid'), card.dataset.hls);
 });
 
 /* ====== Fullscreen ====== */
 function fsTile(ev, btn){
   ev.stopPropagation();
-  const card = btn.closest('.cam');
-  const elem = card.querySelector('.thumb');
+  const elem = btn.closest('.cam').querySelector('.thumb');
   if (elem.requestFullscreen) elem.requestFullscreen();
   else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
 }
@@ -147,7 +137,7 @@ function openVideos(btn){
   window.open('/videos?'+qs.toString(), '_blank');
 }
 
-/* ====== Drag & Drop order (persist) ====== */
+/* ====== Drag order persist ====== */
 const grid = document.getElementById('grid');
 let dragSrc = null;
 grid?.addEventListener('dragstart', (e) => {
@@ -185,11 +175,9 @@ function saveOrder(){
   }catch(e){}
 })();
 
-/* ====== Resize per tile (persist) ====== */
-const SIZE_SEQ = [[1,1],[2,1],[2,2]]; // cycle 1x1 → 2x1 → 2x2
-function loadSizes(){
-  try { return JSON.parse(localStorage.getItem('sandya_nvr_tile_sizes')||'{}') } catch(e){ return {}; }
-}
+/* ====== Resize per-tile (persist) ====== */
+const SIZE_SEQ = [[1,1],[2,1],[2,2]]; // cycle
+function loadSizes(){ try { return JSON.parse(localStorage.getItem('sandya_nvr_tile_sizes')||'{}') } catch(e){ return {}; } }
 function saveSizes(s){ localStorage.setItem('sandya_nvr_tile_sizes', JSON.stringify(s)); }
 function applySizes(){
   const sizes = loadSizes();
@@ -218,7 +206,7 @@ function cycleSize(btn){
 }
 applySizes();
 
-/* ====== Per page persistence ====== */
+/* ====== Per page persist ====== */
 const perSel = document.getElementById('per');
 perSel?.addEventListener('change', () => {
   localStorage.setItem('sandya_nvr_perpage', perSel.value);
@@ -237,7 +225,7 @@ perSel?.addEventListener('change', () => {
 </script>
 
 <style>
-/* ====== Grid responsive + variable span ====== */
+/* ====== Grid & tile fix (2x2 penuh) ====== */
 #grid.grid{
   --row: 200px;
   display: grid;
@@ -246,11 +234,34 @@ perSel?.addEventListener('change', () => {
   grid-auto-flow: dense;
   gap: 16px;
 }
-.cam { grid-column: span var(--w,1); grid-row: span var(--h,1); }
+.cam{
+  grid-column: span var(--w,1);
+  grid-row: span var(--h,1);
+  /* kunci tinggi item supaya anak bisa 100% */
+  min-height: calc(var(--h,1) * var(--row));
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
 .cam.dragging { opacity:.6; transform:scale(.98); }
 
-/* ====== Hidden actions (slide-in) ====== */
-.thumb { position: relative; overflow:hidden; border-radius: 16px; }
+/* container video wajib full */
+.thumb{
+  position: relative;
+  overflow:hidden;
+  border-radius: 16px;
+  flex: 1 1 auto;
+  height: 100%;
+  display: flex;
+}
+.vid{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  background:#000;
+}
+
+/* Hidden actions slide-in */
 .actions{
   position:absolute; left:0; right:0; bottom:0;
   display:flex; justify-content:center; align-items:center; gap:10px;
@@ -262,22 +273,16 @@ perSel?.addEventListener('change', () => {
 .thumb:hover .actions,
 .thumb:active .actions { transform: translateY(0%); opacity:1; }
 .videos-btn { background:#7c3aed; color:#fff; text-decoration:none; padding:10px 16px; border-radius:10px; font-weight:700; }
-.size-group .sBtn{ background:#111827; color:#e5e7eb; padding:10px 12px; border-radius:10px; }
-.fs-btn{
-  position:absolute; right:8px; top:8px; z-index:3;
-}
-
-/* Label position */
+.sBtn{ background:#111827; color:#e5e7eb; padding:10px 12px; border-radius:10px; }
+.fs-btn{ position:absolute; right:8px; top:8px; z-index:3; }
 .cam-label{ position:absolute; left:12px; top:10px; z-index:2 }
 
 /* Mobile: jangan crop video, biar letterboxed */
 @media (max-width: 768px){
   #grid.grid{ grid-template-columns: 1fr; grid-auto-rows: 220px; gap:12px; }
-  .vid{ object-fit: contain !important; }
+  .vid{ object-fit: contain; }
   .fs-btn{ right:6px; top:6px; }
 }
-
-/* (Sedikit lebih ringkas di layar super kecil) */
 @media (max-width: 380px){
   #grid.grid{ grid-auto-rows: 200px; }
 }
