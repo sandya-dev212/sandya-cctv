@@ -18,8 +18,6 @@
   </form>
 </section>
 
-<p class="muted">Preview kamera. (Super Admin: agregat semua NVR)</p>
-
 <?php if (empty($tiles)): ?>
   <p style="color:#94a3b8">Belum ada kamera untuk ditampilkan.</p>
 <?php else: ?>
