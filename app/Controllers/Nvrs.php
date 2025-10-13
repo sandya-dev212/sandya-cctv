@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\NvrModel;
+use App\Libraries\Shinobi;
 
 class Nvrs extends BaseController
 {
@@ -22,9 +23,23 @@ class Nvrs extends BaseController
         $m = new NvrModel();
         $items = $m->orderBy('name')->findAll();
 
+        // hitung total camera per NVR (real time dari Shinobi)
+        $totals = [];
+        $cli = new Shinobi();
+        foreach ($items as $n) {
+            $cnt = 0;
+            if ((int)$n['is_active'] === 1) {
+                $resp = $cli->getMonitors($n['base_url'], $n['api_key'], $n['group_key'], null);
+                if ($resp['ok'] && is_array($resp['data'])) {
+                    $cnt = count($cli->normalizeMonitors($resp['data']));
+                }
+            }
+            $totals[$n['id']] = $cnt;
+        }
+
         return view('layout/main', [
             'title'   => 'NVRs',
-            'content' => view('nvrs/index', ['items' => $items]),
+            'content' => view('nvrs/index', ['items' => $items, 'totals' => $totals]),
         ]);
     }
 

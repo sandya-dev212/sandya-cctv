@@ -8,13 +8,20 @@
 <?php else: ?>
   <table style="width:100%;border-collapse:collapse">
     <thead>
-      <tr><th align="left">Name</th><th align="left">Base URL</th><th>Active</th><th>Aksi</th></tr>
+      <tr>
+        <th align="left">Name</th>
+        <th align="left">Base URL</th>
+        <th align="right">Total Camera(s)</th>
+        <th align="center">Active</th>
+        <th>Aksi</th>
+      </tr>
     </thead>
     <tbody>
       <?php foreach ($items as $it): ?>
       <tr style="border-top:1px solid #1f2937">
         <td><?= esc($it['name']) ?></td>
         <td><?= esc($it['base_url']) ?></td>
+        <td align="right"><?= (int)($totals[$it['id']] ?? 0) ?></td>
         <td align="center"><?= (int)$it['is_active'] ? '✔' : '—' ?></td>
         <td>
           <a class="btn ghost" href="/nvrs/<?= (int)$it['id'] ?>/edit">Edit</a>
