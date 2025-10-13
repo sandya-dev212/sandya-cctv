@@ -52,6 +52,7 @@ function activeBtn(string $path): string {
     <a href="/" class="brand" aria-label="Home">
       <img src="/assets/logo.png" alt="Sandya">
     </a>
+	<a>Sandya NVR</a>
 
     <?php if (!$isLogin && $isAuthed): ?>
       <a href="/dashboard"  class="<?= activeBtn('/dashboard') ?>">Dashboard</a>
@@ -70,6 +71,7 @@ function activeBtn(string $path): string {
   <div class="nav-right">
     <?php if (!$isLogin && $isAuthed): ?>
       <div class="user">
+	    <span class="user-name"><?= esc(session('name')) ?></span>
         <span class="role-badge">Role: <?= esc($role) ?></span>
         <a class="btn-out" href="/logout" onclick="return confirm('Logout?')">Logout</a>
       </div>
