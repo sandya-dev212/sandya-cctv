@@ -15,7 +15,10 @@ class Users extends BaseController
     public function index()
     {
         if ($r = $this->guard()) return $r;
-        $items = (new UserModel())->orderBy('username')->findAll();
+
+        // Penting: paksa ambil SEMUA kolom, menghindari Model yg ngebatesin SELECT
+        $um    = new UserModel();
+        $items = $um->select('*')->orderBy('username')->findAll();
 
         return view('layout/main', [
             'title'   => 'Users',
@@ -68,7 +71,6 @@ class Users extends BaseController
         $item = (new UserModel())->find((int)$id);
         if (!$item) return redirect()->to('/users');
 
-        // sekarang LDAP juga boleh diedit (role/aktif)
         return view('layout/main', [
             'title'   => 'Edit User',
             'content' => view('users/form', ['mode'=>'edit','item'=>$item]),
@@ -83,8 +85,9 @@ class Users extends BaseController
         $item = $um->find((int)$id);
         if (!$item) return redirect()->to('/users');
 
-        $auth = $item['auth_source'] ?: 'local';
-        $role = trim((string)$this->request->getPost('role')) ?: $item['role'];
+        $auth   = ($item['auth_source'] ?? $item['auth'] ?? $item['auth_type'] ?? $item['provider'] ?? $item['auth_provider'] ?? '') ?: 'local';
+        $auth   = strtolower($auth);
+        $role   = trim((string)$this->request->getPost('role')) ?: $item['role'];
         $active = (int)$this->request->getPost('is_active') ? 1 : 0;
 
         $data = [
@@ -101,7 +104,6 @@ class Users extends BaseController
             $data['full_name'] = $full ?: $item['username'];
             if ($pass !== '') $data['password_hash'] = password_hash($pass, PASSWORD_BCRYPT);
         }
-        // LDAP: field lain diabaikan (read-only)
 
         $um->update($item['id'], $data);
         return redirect()->to('/users');
@@ -115,7 +117,6 @@ class Users extends BaseController
         $item = $um->find((int)$id);
         if (!$item) return redirect()->to('/users');
 
-        // sekarang LDAP juga boleh dihapus (akan recreate saat login LDAP lagi)
         $um->delete($item['id']);
         return redirect()->to('/users');
     }
