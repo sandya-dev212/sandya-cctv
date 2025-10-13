@@ -55,8 +55,8 @@ $routes->post('users/(:num)/delete',  'Users::delete/$1');
 // DEBUGGING
 $routes->get('debug/dashboard_check', 'Debug::dashboard_check');
 
-// PATCH START (Ucok) — Videos page & data proxy
+// ---------- Videos ----------
 $routes->get('videos',       'Videos::index');   // UI list rekaman
 $routes->get('videos/data',  'Videos::data');    // proxy Get Videos Shinobi (JSON)
 $routes->get('videos/monitors', 'Videos::monitors'); // dropdown camera per NVR
-// PATCH END
+
