@@ -58,4 +58,5 @@ $routes->get('debug/dashboard_check', 'Debug::dashboard_check');
 // PATCH START (Ucok) — Videos page & data proxy
 $routes->get('videos',       'Videos::index');   // UI list rekaman
 $routes->get('videos/data',  'Videos::data');    // proxy Get Videos Shinobi (JSON)
+$routes->get('videos/monitors', 'Videos::monitors'); // dropdown camera per NVR
 // PATCH END

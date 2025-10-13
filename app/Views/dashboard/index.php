@@ -24,38 +24,33 @@
   <p style="color:#94a3b8">Belum ada kamera untuk ditampilkan.</p>
 <?php else: ?>
 
-  <!-- GRID autoplay + drag n drop -->
   <section id="grid" class="grid">
     <?php foreach ($tiles as $t): ?>
       <article class="card cam" draggable="true"
                data-id="<?= esc($t['id']) ?>"
                data-hls="<?= esc($t['hls']) ?>"
-               data-alias="<?= esc($t['alias']) ?>">
+               data-alias="<?= esc($t['alias']) ?>"
+               data-nvr-id="<?= (int)$t['nvr_id'] ?>"
+               data-mon="<?= esc($t['monitor_id']) ?>">
         <div class="thumb" style="cursor:move; position:relative">
-          <!-- video langsung (tanpa thumbnail, auto play) -->
           <video class="vid" muted playsinline autoplay
                  style="width:100%;height:100%;object-fit:cover;background:#000"></video>
 
-          <!-- fullscreen -->
           <button class="btn ghost" onclick="fsTile(event,this)" title="Fullscreen"
                   style="position:absolute;right:8px;top:8px;z-index:3">⤢</button>
 
-          <!-- label overlay kiri-atas -->
           <span class="chip" title="<?= esc($t['alias']) ?>" style="z-index:2">
             <?= esc($t['nvr']) ?> / <?= esc($t['monitor_id']) ?>
           </span>
 
-          <!-- overlay tombol Videos -->
           <div class="overlay">
             <a class="btn videos-btn" href="#" onclick="openVideos(this);return false;">Videos (3 hari)</a>
           </div>
         </div>
-        <!-- meta/title bawah DIHAPUS sesuai request -->
       </article>
     <?php endforeach; ?>
   </section>
 
-  <!-- Pagination -->
   <div class="pagination" style="display:flex;gap:6px;justify-content:center;margin:16px 0">
     <?php
       $curr = (int)($page ?? 1);
@@ -98,7 +93,6 @@
   </div>
 <?php endif; ?>
 
-<!-- HLS -->
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
 <script>
 function attachHls(videoEl, url){
@@ -132,60 +126,13 @@ function fsTile(ev, btn){
   else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
 }
 
-/* ====== FIX: parser HLS lebih robust ======
-   Pola yang dicoba, berurutan:
-   1) /{group}/{api}/hls/{monitor}/...
-   2) /{group}/{api}/monitors/{monitor}/hls/...
-   3) .../{group}/{api}/{monitor}/hls/...
-*/
-function parseFromHls(hlsUrl){
-  try{
-    const u   = new URL(hlsUrl);
-    const seg = u.pathname.split('/').filter(Boolean);
-    const low = seg.map(s => s.toLowerCase());
-    const L   = seg.length;
-
-    // 1) .../{group}/{api}/hls/{monitor}/...
-    {
-      const i = low.lastIndexOf('hls');
-      if (i > 1 && i < L-1) {
-        const group = seg[i-2], api = seg[i-1], mon = seg[i+1];
-        if (group && api && mon) return { base:u.origin, g:group, k:api, mon };
-      }
-    }
-    // 2) .../{group}/{api}/monitors/{monitor}/hls/...
-    {
-      const i = low.lastIndexOf('monitors');
-      if (i > 1 && i < L-1) {
-        const group = seg[i-2], api = seg[i-1], mon = seg[i+1];
-        // pastikan setelah monitors ada "hls" di i+2 atau i+3
-        if (group && api && mon) return { base:u.origin, g:group, k:api, mon };
-      }
-    }
-    // 3) .../{group}/{api}/{monitor}/hls/...
-    {
-      const i = low.indexOf('hls');
-      if (i >= 3) {
-        const group = seg[i-3], api = seg[i-2], mon = seg[i-1];
-        if (group && api && mon) return { base:u.origin, g:group, k:api, mon };
-      }
-    }
-  }catch(e){}
-  return null;
-}
-
 function openVideos(btn){
   const card  = btn.closest('.cam');
-  const hls   = card?.dataset?.hls || '';
+  const nvrId = card?.dataset?.nvrId || card?.dataset?.nvr_id || card.getAttribute('data-nvr-id');
+  const mon   = card?.dataset?.mon || card.getAttribute('data-mon');
   const alias = card?.dataset?.alias || '';
-  const p = parseFromHls(hls);
-  if (p) {
-    const qs = new URLSearchParams({ base:p.base, g:p.g, k:p.k, mon:p.mon, cam:alias });
-    window.open('/videos?'+qs.toString(), '_blank');
-  } else {
-    // fallback: tetap buka /videos biar user bisa isi manual
-    window.open('/videos', '_blank');
-  }
+  const qs    = new URLSearchParams({ nvr_id: nvrId, mon: mon, cam: alias });
+  window.open('/videos?'+qs.toString(), '_blank');
 }
 
 const grid = document.getElementById('grid');
@@ -243,7 +190,6 @@ perSel?.addEventListener('change', () => {
 
 <style>
 .cam.dragging { opacity:.6; transform:scale(.98); }
-/* overlay videos */
 .overlay {
   position:absolute; inset:0;
   display:flex; align-items:center; justify-content:center;
