@@ -14,7 +14,7 @@ class Cameras extends Controller
     {
         if (!session('isLoggedIn')) return redirect()->to('/login');
         $role = session('role') ?? 'user';
-        if ($role === 'user') return redirect()->to('/dashboard'); // user biasa dilarang
+        if ($role === 'user') return redirect()->to('/dashboard');
         return null;
     }
 
@@ -28,6 +28,11 @@ class Cameras extends Controller
         $nvrId  = (int)($this->request->getGet('nvr_id') ?? ($nvrs[0]['id'] ?? 0));
         $active = $nvrId ? $nvrModel->find($nvrId) : null;
 
+        $dModel = new DashboardModel();
+        $dashboards = $dModel->orderBy('name')->findAll();
+        $dashboardActiveId = (int)($this->request->getGet('dashboard_id') ?? ($dashboards[0]['id'] ?? 0));
+
+        // Ambil monitors dari Shinobi
         $streams = ['ok'=>false, 'items'=>[],'msg'=>''];
         if ($active) {
             $cli = new Shinobi();
@@ -40,21 +45,30 @@ class Cameras extends Controller
             }
         }
 
-        $dModel = new DashboardModel();
-        $dashboards = $dModel->orderBy('name')->findAll();
+        // Set of assigned monitor_id untuk dashboard aktif
+        $assignedSet = [];
+        if ($dashboardActiveId > 0) {
+            $dm = new DashboardMonitorModel();
+            $rows = $dm->select('monitor_id')->where([
+                'dashboard_id' => $dashboardActiveId,
+                'nvr_id'       => $nvrId,
+            ])->findAll();
+            foreach ($rows as $r) $assignedSet[(string)$r['monitor_id']] = true;
+        }
 
         return view('layout/main', [
             'title'   => 'Cameras',
             'content' => view('cameras/index', [
-                'nvrs'       => $nvrs,
-                'nvrActive'  => $active,
-                'streams'    => $streams,
-                'dashboards' => $dashboards,
+                'nvrs'              => $nvrs,
+                'nvrActive'         => $active,
+                'streams'           => $streams,
+                'dashboards'        => $dashboards,
+                'dashboardActiveId' => $dashboardActiveId,
+                'assignedSet'       => $assignedSet,
             ]),
         ]);
     }
 
-    // assign monitor ke dashboard (dipanggil dari /cameras)
     public function assign()
     {
         if ($r = $this->guard()) return $r;
@@ -96,40 +110,36 @@ class Cameras extends Controller
         return $this->response->setJSON(['ok'=>true,'msg'=>'Removed']);
     }
 
-    // =======================
-    //  MAPPINGS MANAGEMENT
-    // =======================
     public function mappings()
-	{
-		if ($r = $this->guard()) return $r;
+    {
+        if ($r = $this->guard()) return $r;
 
-		$dModel = new DashboardModel();
-		$dashboards = $dModel->orderBy('name')->findAll();
+        $dModel = new DashboardModel();
+        $dashboards = $dModel->orderBy('name')->findAll();
 
-		// support param salah ketik: dashbboard_id
-		$dashboardId = (int)(
-			$this->request->getGet('dashboard_id')
-			?? $this->request->getGet('dashbboard_id')
-			?? ($dashboards[0]['id'] ?? 0)
-		);
+        $dashboardId = (int)(
+            $this->request->getGet('dashboard_id')
+            ?? $this->request->getGet('dashbboard_id')
+            ?? ($dashboards[0]['id'] ?? 0)
+        );
 
-		$rows = [];
-		if ($dashboardId) {
-			$dm = new DashboardMonitorModel();
-			$rows = $dm->where('dashboard_id', $dashboardId)
-					   ->orderBy('sort_order', 'asc')
-					   ->findAll();
-		}
+        $rows = [];
+        if ($dashboardId) {
+            $dm = new DashboardMonitorModel();
+            $rows = $dm->where('dashboard_id', $dashboardId)
+                ->orderBy('sort_order', 'asc')
+                ->findAll();
+        }
 
-		return view('layout/main', [
-			'title'   => 'Camera Mappings',
-			'content' => view('cameras/mappings', [
-				'dashboards'  => $dashboards,
-				'dashboardId' => $dashboardId,
-				'rows'        => $rows,
-			]),
-		]);
-}
+        return view('layout/main', [
+            'title'   => 'Camera Mappings',
+            'content' => view('cameras/mappings', [
+                'dashboards'  => $dashboards,
+                'dashboardId' => $dashboardId,
+                'rows'        => $rows,
+            ]),
+        ]);
+    }
 
     public function updateMapping()
     {

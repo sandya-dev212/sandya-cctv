@@ -10,16 +10,19 @@
         </option>
       <?php endforeach; ?>
     </select>
+
+    <!-- keep selected dashboard in query supaya status Assigned kebaca saat refresh -->
+    <input type="hidden" name="dashboard_id" id="hidDash" value="<?= (int)($dashboardActiveId ?? 0) ?>">
   </form>
 
   <!-- pilih Dashboard untuk assign/mappings -->
   <div style="display:flex;gap:8px;align-items:center">
-    <select id="selDash" style="min-width:220px">
+    <select id="selDash" style="min-width:220px" onchange="document.getElementById('hidDash').value=this.value; location.href='<?= '/cameras?nvr_id='.(int)($nvrActive['id'] ?? 0) ?>&dashboard_id='+this.value;">
       <?php foreach ($dashboards as $d): ?>
-        <option value="<?= (int)$d['id'] ?>"><?= esc($d['name']) ?></option>
+        <option value="<?= (int)$d['id'] ?>" <?= ((int)$dashboardActiveId === (int)$d['id'])?'selected':'' ?>><?= esc($d['name']) ?></option>
       <?php endforeach; ?>
     </select>
-    <a class="btn ghost" href="#" id="btnMappings">Mappings</a>
+    <a class="btn ghost" href="/cameras/mappings?dashboard_id=<?= (int)$dashboardActiveId ?>">Mappings</a>
   </div>
 </section>
 
@@ -29,42 +32,59 @@
   <?php if (!$streams['ok'] || empty($streams['items'])): ?>
     <p class="muted"><?= esc($streams['msg'] ?: 'Tidak ada monitor / Shinobi error.') ?></p>
   <?php else: ?>
-    <div class="grid">
-      <?php foreach ($streams['items'] as $m): ?>
-        <article class="card">
-          <div class="thumb">
-            <span class="chip"><?= esc(($nvrActive['name'] ?? 'NVR').' / '.$m['mid']) ?></span>
-          </div>
-          <div class="meta">
-            <div class="title"><?= esc($m['name']) ?></div>
-            <div class="actions">
+
+    <table class="table" id="tblCam">
+      <thead>
+        <tr>
+          <th style="width:260px">NVR / Monitor ID</th>
+          <th>Camera Name</th>
+          <th style="width:180px">Status</th>
+          <th style="width:220px">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+      <?php foreach ($streams['items'] as $m): 
+            $mid = (string)$m['mid'];
+            $assigned = isset($assignedSet[$mid]);
+      ?>
+        <tr>
+          <td><span class="chip"><?= esc(($nvrActive['name'] ?? 'NVR')) ?></span> — <b><?= esc($mid) ?></b></td>
+          <td><?= esc($m['name']) ?></td>
+          <td>
+            <?php if ($assigned): ?>
+              <span class="chip" style="background:#064e3b">Assigned</span>
+            <?php else: ?>
+              <span class="chip" style="background:#111827">Not Assigned</span>
+            <?php endif; ?>
+          </td>
+          <td>
+            <?php if ($assigned): ?>
+              <button class="btn" style="background:#ef4444;pointer-events:none;opacity:.8">Assigned</button>
+            <?php else: ?>
               <button class="btn ghost assign-btn"
-                      data-mid="<?= esc($m['mid']) ?>"
+                      data-mid="<?= esc($mid) ?>"
                       data-nvr="<?= (int)$nvrActive['id'] ?>">
                 Assign to Dashboard
               </button>
-            </div>
-          </div>
-        </article>
+            <?php endif; ?>
+          </td>
+        </tr>
       <?php endforeach; ?>
-    </div>
+      </tbody>
+    </table>
+
   <?php endif; ?>
 <?php endif; ?>
 
 <script>
 const selDash = document.getElementById('selDash');
-document.getElementById('btnMappings').addEventListener('click', (e)=>{
-  e.preventDefault();
-  const id = selDash.value || '';
-  if (!id) return;
-  location.href = '/cameras/mappings?dashboard_id=' + encodeURIComponent(id);
-});
 
-// assign tanpa alias + auto-disable tombol setelah sukses
+// assign tanpa alias + update baris jadi Assigned
 document.querySelectorAll('.assign-btn').forEach(btn=>{
   btn.addEventListener('click', async ()=>{
     const dashId = selDash.value;
     if (!dashId) { alert('Pilih dashboard dulu.'); return; }
+    const tr = btn.closest('tr');
     const fd = new FormData();
     fd.append('dashboard_id', dashId);
     fd.append('nvr_id', btn.dataset.nvr);
@@ -74,10 +94,9 @@ document.querySelectorAll('.assign-btn').forEach(btn=>{
     const r = await fetch('/cameras/assign', {method:'POST', body:fd});
     const j = await r.json().catch(()=>({ok:false,msg:'Bad response'}));
     if (j.ok) {
-      btn.textContent = 'Assigned';
-      btn.classList.remove('ghost');
-      btn.style.background = '#ef4444';
-      btn.style.color = '#fff';
+      btn.outerHTML = '<button class="btn" style="background:#ef4444;pointer-events:none;opacity:.8">Assigned</button>';
+      const statusCell = tr.querySelector('td:nth-child(3)');
+      statusCell.innerHTML = '<span class="chip" style="background:#064e3b">Assigned</span>';
     } else {
       btn.disabled = false; btn.textContent = 'Assign to Dashboard';
       alert('Gagal: ' + (j.msg||''));
