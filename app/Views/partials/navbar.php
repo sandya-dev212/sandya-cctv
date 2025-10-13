@@ -68,12 +68,9 @@ function activeBtn(string $path): string {
     <?php if (!$isLogin && $isAuthed): ?>
       <a href="/dashboard"  class="<?= activeBtn('/dashboard') ?>">Dashboard</a>
       <?php if (in_array($role, ['admin','superadmin'], true)): ?>
-        <a href="/dashboards" class="<?= activeBtn('/dashboards') ?>">Dashboards</a>
+	    <a href="/nvrs"       class="<?= activeBtn('/nvrs') ?>">NVRs</a>
         <a href="/cameras"    class="<?= activeBtn('/cameras') ?>">Cameras</a>
-        <a href="/nvrs"       class="<?= activeBtn('/nvrs') ?>">NVRs</a>
-        <?php if ($role === 'superadmin'): ?>
-          <a href="/users"    class="<?= activeBtn('/users') ?>">Users</a>
-        <?php endif; ?>
+		<a href="/dashboards" class="<?= activeBtn('/dashboards') ?>">User Dashboards</a>		
         <a href="/videos"     class="<?= activeBtn('/videos') ?>">Videos</a>
       <?php endif; ?>
     <?php endif; ?>
@@ -82,6 +79,9 @@ function activeBtn(string $path): string {
   <div class="nav-right">
     <?php if (!$isLogin && $isAuthed): ?>
       <div class="user">
+	    <?php if ($role === 'superadmin'): ?>
+          <a href="/users"    class="<?= activeBtn('/users') ?>">Users List</a>
+        <?php endif; ?>
         <span class="role-badge">Role: <?= esc($role) ?></span>
         <a class="btn-out" href="/logout" onclick="return confirm('Logout?')">Logout</a>
       </div>
