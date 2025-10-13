@@ -17,11 +17,20 @@ function activeBtn(string $path): string {
   display:flex; justify-content:space-between; align-items:center; gap:14px;
   padding:12px 6px;
 }
-.nav-left,.nav-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.nav-left,.nav-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 
 /* brand */
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none}
-.brand img{height:22px;display:block}
+.brand-logo{height:22px;display:block}
+.brand-title{
+  font-weight:900; font-size:22px; line-height:1;
+  letter-spacing:.4px;
+  color:#e5e7eb;
+  text-shadow:0 1px 0 rgba(0,0,0,.25);
+  margin-right:6px;
+  user-select:none;
+}
+.brand-title .accent{color:#a78bfa}
 
 /* buttons */
 .btn-nav{
@@ -32,6 +41,7 @@ function activeBtn(string $path): string {
 }
 .btn-nav:hover{background:#0b1220;border-color:#374151}
 .btn-nav.active{background:#7c3aed;color:#0b1020;border-color:#7c3aed;font-weight:700}
+
 .role-badge{
   background:#1f2937; color:#cbd5e1; padding:6px 10px; border-radius:999px; font-size:12px;
 }
@@ -44,15 +54,16 @@ function activeBtn(string $path): string {
 @media (max-width:768px){
   .nav{flex-direction:column; align-items:flex-start; gap:8px}
   .nav-right{width:100%; justify-content:space-between}
+  .brand-title{font-size:18px}
 }
 </style>
 
 <nav class="nav">
   <div class="nav-left">
     <a href="/" class="brand" aria-label="Home">
-      <img src="/assets/logo.png" alt="Sandya">
+      <img class="brand-logo" src="/assets/logo.png" alt="Sandya">
+      <span class="brand-title">Sandya <span class="accent">NVR</span></span>
     </a>
-	<a>Sandya NVR</a>
 
     <?php if (!$isLogin && $isAuthed): ?>
       <a href="/dashboard"  class="<?= activeBtn('/dashboard') ?>">Dashboard</a>
@@ -71,7 +82,6 @@ function activeBtn(string $path): string {
   <div class="nav-right">
     <?php if (!$isLogin && $isAuthed): ?>
       <div class="user">
-	    <span class="user-name"><?= esc(session('name')) ?></span>
         <span class="role-badge">Role: <?= esc($role) ?></span>
         <a class="btn-out" href="/logout" onclick="return confirm('Logout?')">Logout</a>
       </div>

@@ -30,7 +30,7 @@
     <?php endif; ?>
 
     <label for="username">Username</label>
-    <input id="username" name="username" placeholder="mis. administrator" required value="<?= esc(old('username')) ?>">
+    <input id="username" name="username" placeholder="username" required value="<?= esc(old('username')) ?>">
 
     <label for="password">Password</label>
     <input id="password" name="password" type="password" placeholder="••••••••" required>
