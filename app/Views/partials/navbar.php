@@ -1,56 +1,76 @@
+<?php
+// detect active page + auth page
+$uri      = service('uri');
+$seg1     = strtolower($uri->getSegment(1) ?? '');
+$isLogin  = ($seg1 === 'login'); // /login
+$role     = session('role') ?? 'user';
+$isAuthed = (bool) session('isLoggedIn');
+
+function activeBtn(string $path): string {
+    $curr = strtolower(parse_url(current_url(), PHP_URL_PATH) ?? '');
+    return (str_starts_with($curr, $path)) ? 'btn-nav active' : 'btn-nav';
+}
+?>
 <style>
-/* responsive navbar */
-.nav{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-.nav-left,.nav-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.nav-link{color:#e5e7eb;text-decoration:none;padding:6px 8px;border-radius:8px}
-.nav-link:hover{background:#111827}
-.user{display:flex;align-items:center;gap:8px}
-.btn-out{padding:6px 10px;border-radius:10px;background:#ef4444;color:#fff;text-decoration:none}
-
-/* brand logo: anti gepeng */
-.brand{display:flex;align-items:center;text-decoration:none}
-.brand img{
-  height:28px;              /* tinggi default navbar */
-  width:auto;               /* pertahankan rasio */
-  object-fit:contain;
-  display:block;
+/* layout */
+.nav{
+  display:flex; justify-content:space-between; align-items:center; gap:14px;
+  padding:12px 6px;
 }
-@media (min-width: 1024px){
-  .brand img{ height:32px; }
+.nav-left,.nav-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* brand */
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand img{height:22px;display:block}
+
+/* buttons */
+.btn-nav{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 12px; border-radius:999px;
+  background:#111827; color:#e5e7eb; text-decoration:none;
+  border:1px solid #1f2937; transition:all .15s ease;
+}
+.btn-nav:hover{background:#0b1220;border-color:#374151}
+.btn-nav.active{background:#7c3aed;color:#0b1020;border-color:#7c3aed;font-weight:700}
+.role-badge{
+  background:#1f2937; color:#cbd5e1; padding:6px 10px; border-radius:999px; font-size:12px;
+}
+.user{display:flex;align-items:center;gap:10px}
+.btn-out{
+  padding:8px 12px; border-radius:999px; background:#ef4444; color:#fff; text-decoration:none; border:none
 }
 
-/* collapse di mobile */
-@media (max-width: 768px){
-  .nav{flex-direction:column;align-items:flex-start}
-  .nav-right{width:100%;justify-content:space-between}
+/* compact on mobile */
+@media (max-width:768px){
+  .nav{flex-direction:column; align-items:flex-start; gap:8px}
+  .nav-right{width:100%; justify-content:space-between}
 }
 </style>
 
 <nav class="nav">
   <div class="nav-left">
-    <a href="/" class="brand" aria-label="Sandya NVR">
-      <img src="/assets/logo.png" alt="Sandya NVR">
+    <a href="/" class="brand" aria-label="Home">
+      <img src="/assets/logo.png" alt="Sandya">
     </a>
 
-    <a href="/dashboard" class="nav-link">Dashboard</a>
-
-    <?php $role = session('role') ?? 'user'; ?>
-    <?php if (in_array($role, ['admin','superadmin'], true)): ?>
-      <a href="/dashboards" class="nav-link">Dashboards</a>
-      <a href="/cameras"    class="nav-link">Cameras</a>
-      <a href="/nvrs"       class="nav-link">NVRs</a>
-      <?php if ($role === 'superadmin'): ?>
-        <a href="/users"    class="nav-link">Users</a>
+    <?php if (!$isLogin && $isAuthed): ?>
+      <a href="/dashboard"  class="<?= activeBtn('/dashboard') ?>">Dashboard</a>
+      <?php if (in_array($role, ['admin','superadmin'], true)): ?>
+        <a href="/dashboards" class="<?= activeBtn('/dashboards') ?>">Dashboards</a>
+        <a href="/cameras"    class="<?= activeBtn('/cameras') ?>">Cameras</a>
+        <a href="/nvrs"       class="<?= activeBtn('/nvrs') ?>">NVRs</a>
+        <?php if ($role === 'superadmin'): ?>
+          <a href="/users"    class="<?= activeBtn('/users') ?>">Users</a>
+        <?php endif; ?>
+        <a href="/videos"     class="<?= activeBtn('/videos') ?>">Videos</a>
       <?php endif; ?>
-      <a href="/videos"     class="nav-link">Videos</a>
     <?php endif; ?>
   </div>
 
   <div class="nav-right">
-    <?php if (session('isLoggedIn')): ?>
+    <?php if (!$isLogin && $isAuthed): ?>
       <div class="user">
-        <span class="user-name"><?= esc(session('name')) ?></span>
-        <span class="badge"><?= esc($role) ?></span>
+        <span class="role-badge">Role: <?= esc($role) ?></span>
         <a class="btn-out" href="/logout" onclick="return confirm('Logout?')">Logout</a>
       </div>
     <?php endif; ?>
