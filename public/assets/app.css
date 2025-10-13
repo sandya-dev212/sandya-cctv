@@ -40,3 +40,17 @@
 .modal.hidden{display:none}
 .modal-content{background:var(--card);border:1px solid var(--line);border-radius:16px;min-width:320px;max-width:900px;width:90%;min-height:200px;box-shadow:0 20px 60px rgba(0,0,0,.5);position:relative}
 .modal-close{position:absolute;top:8px;right:10px;background:#272b37;color:#e2e8f0;border:none;border-radius:10px;width:32px;height:32px;font-size:18px;cursor:pointer}
+
+/* Safe-area untuk perangkat berponi (Android/iOS) */
+@supports (padding: env(safe-area-inset-top)) {
+  .nav {
+    /* tambah ruang di atas sesuai notch, minimal 12px biar rapi */
+    padding-top: calc(env(safe-area-inset-top) + 12px);
+    padding-left: calc(env(safe-area-inset-left) + 6px);
+    padding-right: calc(env(safe-area-inset-right) + 6px);
+  }
+  body {
+    /* kalau ada elemen fixed lain di atas, bisa ditambahkan di sini juga */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

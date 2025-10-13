@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title><?= esc($title ?? 'Sandya NVR') ?></title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
   <!-- Favicon / icons -->
   <link rel="icon" type="image/x-icon" href="/assets/favico.ico">
