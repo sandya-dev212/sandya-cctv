@@ -50,7 +50,7 @@
             <a class="btn videos-btn" href="#" onclick="openVideos(this);return false;">Videos (3 hari)</a>
           </div>
         </div>
-        <!-- NOTE: meta/title bawah DIHAPUS sesuai request -->
+        <!-- meta/title bawah DIHAPUS sesuai request -->
       </article>
     <?php endforeach; ?>
   </section>
@@ -132,26 +132,42 @@ function fsTile(ev, btn){
   else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
 }
 
-/** Build link Videos dari HLS URL
- * Contoh pola umum Shinobi:
- *   {base}/{group}/{api}/hls/{monitor}/s.m3u8
- *   {base}/{group}/{api}/mjpeg/{monitor}
- * Regex ambil: base, group, api, monitor
- */
+/* ====== FIX: parser HLS lebih robust ======
+   Pola yang dicoba, berurutan:
+   1) /{group}/{api}/hls/{monitor}/...
+   2) /{group}/{api}/monitors/{monitor}/hls/...
+   3) .../{group}/{api}/{monitor}/hls/...
+*/
 function parseFromHls(hlsUrl){
   try{
     const u   = new URL(hlsUrl);
     const seg = u.pathname.split('/').filter(Boolean);
-    // cari indeks group/api
-    // skenario: ["{group}","{api}","hls","{monitor}",...]
-    for (let i=0;i<seg.length-3;i++){
-      const group = seg[i];
-      const api   = seg[i+1];
-      const kind  = seg[i+2]; // hls/mjpeg/monitors
-      const mon   = seg[i+3];
-      if (group && api && mon && (kind==='hls' || kind==='mjpeg' || kind==='monitors')) {
-        const base = u.origin; // {scheme}://{host}
-        return { base, g: group, k: api, mon };
+    const low = seg.map(s => s.toLowerCase());
+    const L   = seg.length;
+
+    // 1) .../{group}/{api}/hls/{monitor}/...
+    {
+      const i = low.lastIndexOf('hls');
+      if (i > 1 && i < L-1) {
+        const group = seg[i-2], api = seg[i-1], mon = seg[i+1];
+        if (group && api && mon) return { base:u.origin, g:group, k:api, mon };
+      }
+    }
+    // 2) .../{group}/{api}/monitors/{monitor}/hls/...
+    {
+      const i = low.lastIndexOf('monitors');
+      if (i > 1 && i < L-1) {
+        const group = seg[i-2], api = seg[i-1], mon = seg[i+1];
+        // pastikan setelah monitors ada "hls" di i+2 atau i+3
+        if (group && api && mon) return { base:u.origin, g:group, k:api, mon };
+      }
+    }
+    // 3) .../{group}/{api}/{monitor}/hls/...
+    {
+      const i = low.indexOf('hls');
+      if (i >= 3) {
+        const group = seg[i-3], api = seg[i-2], mon = seg[i-1];
+        if (group && api && mon) return { base:u.origin, g:group, k:api, mon };
       }
     }
   }catch(e){}
@@ -159,13 +175,17 @@ function parseFromHls(hlsUrl){
 }
 
 function openVideos(btn){
-  const card = btn.closest('.cam');
-  const hls  = card?.dataset?.hls || '';
-  const alias= card?.dataset?.alias || '';
+  const card  = btn.closest('.cam');
+  const hls   = card?.dataset?.hls || '';
+  const alias = card?.dataset?.alias || '';
   const p = parseFromHls(hls);
-  if(!p){ alert('Tidak bisa membentuk link Videos dari URL HLS.'); return; }
-  const qs = new URLSearchParams({ base:p.base, g:p.g, k:p.k, mon:p.mon, cam:alias });
-  window.open('/videos?'+qs.toString(), '_blank');
+  if (p) {
+    const qs = new URLSearchParams({ base:p.base, g:p.g, k:p.k, mon:p.mon, cam:alias });
+    window.open('/videos?'+qs.toString(), '_blank');
+  } else {
+    // fallback: tetap buka /videos biar user bisa isi manual
+    window.open('/videos', '_blank');
+  }
 }
 
 const grid = document.getElementById('grid');

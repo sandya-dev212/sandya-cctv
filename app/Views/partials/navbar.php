@@ -7,10 +7,14 @@
     <?php if (in_array($role, ['admin','superadmin'], true)): ?>
       <a href="/dashboards" class="nav-link">Dashboards</a>
       <a href="/cameras"    class="nav-link">Cameras</a>
+      <a href="/videos"     class="nav-link">Videos</a>
       <a href="/nvrs"       class="nav-link">NVRs</a>
       <?php if ($role === 'superadmin'): ?>
         <a href="/users"    class="nav-link">Users</a>
       <?php endif; ?>
+    <?php else: ?>
+      <!-- user biasa juga bisa buka Videos (pakai filter sendiri) -->
+      <a href="/videos" class="nav-link">Videos</a>
     <?php endif; ?>
   </div>
 
