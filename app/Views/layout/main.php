@@ -4,6 +4,14 @@
   <meta charset="utf-8">
   <title><?= esc($title ?? 'Sandya NVR') ?></title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Favicon / icons -->
+  <link rel="icon" type="image/x-icon" href="/assets/favico.ico">
+  <link rel="shortcut icon" type="image/x-icon" href="/assets/favico.ico">
+  <link rel="apple-touch-icon" href="/assets/logo.png">
+  <meta name="theme-color" content="#0f172a">
+
+  <!-- App assets -->
   <link href="/assets/app.css" rel="stylesheet">
   <script defer src="/assets/app.js"></script>
 </head>
