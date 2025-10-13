@@ -42,7 +42,7 @@ class Shinobi
         return $this->httpGet($url);
     }
 
-    /** Videos listing (kalau butuh) */
+    /** Videos listing (tanpa range) */
     public function getVideos(string $baseUrl, string $apiKey, string $groupKey, ?string $monitorId=null): array
     {
         $b = $this->sanitizeBaseUrl($baseUrl);
@@ -51,6 +51,30 @@ class Shinobi
             : '/videos/' . rawurlencode($groupKey);
         $url = $b . '/' . rawurlencode($apiKey) . $path;
         return $this->httpGet($url, 12);
+    }
+
+    /** Videos listing dgn range waktu sesuai dok: start/end ISO8601 (YYYY-MM-DDTHH:mm:ss) */
+    public function getVideosRange(
+        string $baseUrl,
+        string $apiKey,
+        string $groupKey,
+        string $monitorId,
+        ?string $startIso = null,
+        ?string $endIso   = null,
+        ?string $startOp  = null,   // contoh: >=
+        ?string $endOp    = null,   // contoh: <=
+        bool $endIsStartTo = false
+    ): array {
+        $b = $this->sanitizeBaseUrl($baseUrl);
+        $path = '/videos/' . rawurlencode($groupKey) . '/' . rawurlencode($monitorId);
+        $qs = [];
+        if ($startIso) $qs['start'] = $startIso;
+        if ($endIso)   $qs['end']   = $endIso;
+        if ($startOp)  $qs['startOperator'] = $startOp;
+        if ($endOp)    $qs['endOperator']   = $endOp;
+        if ($endIsStartTo) $qs['endIsStartTo'] = '1';
+        $url = $b . '/' . rawurlencode($apiKey) . $path . ( $qs ? ('?' . http_build_query($qs)) : '' );
+        return $this->httpGet($url, 20);
     }
 
     // URL builders (sesuai docs)
@@ -71,11 +95,9 @@ class Shinobi
         $out = [];
         if (!is_array($data)) return $out;
 
-        // Ada instance yang balikin array keyed-by MID, ada juga list numerik
         foreach ($data as $k => $v) {
             $mon = (is_array($v) && isset($v['monitor'])) ? $v['monitor'] : $v;
 
-            // mid bisa di 'mid' | 'id' | 'monitor_id' | key array
             $mid = $mon['mid'] ?? $mon['id'] ?? $mon['monitor_id'] ?? (is_string($k) ? $k : null);
             if (!$mid) continue;
 
@@ -84,7 +106,7 @@ class Shinobi
             $out[] = [
                 'mid'    => (string)$mid,
                 'name'   => (string)$name,
-                'detail' => $mon, // keep raw kalau perlu
+                'detail' => $mon,
             ];
         }
         return $out;
