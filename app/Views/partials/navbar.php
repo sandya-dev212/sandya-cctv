@@ -59,11 +59,13 @@ function activeBtn(string $path): string {
       <?php if (in_array($role, ['admin','superadmin'], true)): ?>
         <a href="/nvrs"       class="<?= activeBtn('/nvrs') ?>">NVRs</a>
         <a href="/cameras"    class="<?= activeBtn('/cameras') ?>">Cameras</a>
+      <?php endif; ?>
+      <!-- Videos tersedia untuk semua role -->
+      <a href="/videos" class="<?= activeBtn('/videos') ?>">Videos</a>
+	  <?php if (in_array($role, ['admin','superadmin'], true)): ?>
         <a href="/dashboards" class="<?= activeBtn('/dashboards') ?>">User Dashboards</a>
       <?php endif; ?>
 
-      <!-- Videos tersedia untuk semua role -->
-      <a href="/videos" class="<?= activeBtn('/videos') ?>">Videos</a>
     <?php endif; ?>
   </div>
 
