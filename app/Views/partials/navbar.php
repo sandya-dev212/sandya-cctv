@@ -62,10 +62,9 @@ function activeBtn(string $path): string {
       <?php endif; ?>
       <!-- Videos tersedia untuk semua role -->
       <a href="/videos" class="<?= activeBtn('/videos') ?>">Videos</a>
-	  <?php if (in_array($role, ['admin','superadmin'], true)): ?>
+      <?php if (in_array($role, ['admin','superadmin'], true)): ?>
         <a href="/dashboards" class="<?= activeBtn('/dashboards') ?>">User Dashboards</a>
       <?php endif; ?>
-
     <?php endif; ?>
   </div>
 
@@ -76,8 +75,31 @@ function activeBtn(string $path): string {
           <a href="/users" class="<?= activeBtn('/users') ?>">Users List</a>
         <?php endif; ?>
         <span class="role-badge">Role: <?= esc($role) ?></span>
+
+        <!-- Tombol username → klik buka popup account switcher -->
+        <button id="btn-acc-switch" type="button" class="btn-nav" onclick="openAccSwitcher()">
+          @<?= esc(session('username') ?? 'user') ?>
+        </button>
+
         <a class="btn-out" href="/logout" onclick="return confirm('Logout?')">Logout</a>
       </div>
     <?php endif; ?>
   </div>
 </nav>
+
+<script>
+async function openAccSwitcher() {
+  const ex = document.getElementById('acc-switcher');
+  if (ex) { ex.remove(); return; } // toggle off kalau udah ada
+
+  try {
+    const rsp = await fetch('/account-switcher', {headers: {'X-Requested-With':'fetch'}});
+    const html = await rsp.text();
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    document.body.appendChild(div.firstElementChild);
+  } catch (err) {
+    alert('Gagal load switcher.');
+  }
+}
+</script>

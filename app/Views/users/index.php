@@ -46,6 +46,7 @@
       <td><?= esc($u['role']) ?></td>
       <td><?= ((int)$u['is_active']===1)?'✓':'—' ?></td>
       <td style="display:flex;gap:8px">
+	    <a class="btn" href="/users/link/<?= (int)$u['id'] ?>">Link Accounts</a>
         <a class="btn ghost" href="/users/<?= (int)$u['id'] ?>/edit">Edit</a>
         <form action="/users/<?= (int)$u['id'] ?>/delete" method="post" style="display:inline" onsubmit="return confirm('Delete user ini?')">
           <button class="btn" style="background:#ef4444">Delete</button>
