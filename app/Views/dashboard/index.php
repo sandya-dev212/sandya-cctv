@@ -235,34 +235,50 @@ perSel?.addEventListener('change', () => {
 })();
 
 /* ====== Slideshow (TIDAK DIUBAH) ====== */
-const SLIDE_SIZE = 5;
+<script>
+/* ====== Slideshow (client-side, cookie persist) ====== */
+const SLIDE_SIZE = 5;                  // jumlah tile per halaman slideshow
+const ROTATE_MS  = 10000;              // 10 detik
 const btnSlide   = document.getElementById('btnSlide');
 const ctrls      = document.getElementById('slideCtrls');
 const pager      = document.getElementById('pager');
-let slideOn      = getCookie('sandya_slideshow') === '1' || localStorage.getItem('sandya_slideshow') === '1';
-let slideIndex   = parseInt(getCookie('sandya_slide_index') || localStorage.getItem('sandya_slide_index') || '0') || 0;
-let slideTimer   = null;
-const ROTATE_MS  = 8000;
+const grid       = document.getElementById('grid');
+
+let slideOn    = getCookie('sandya_slideshow') === '1' || localStorage.getItem('sandya_slideshow') === '1';
+let slideIndex = parseInt(getCookie('sandya_slide_index') || localStorage.getItem('sandya_slide_index') || '0') || 0;
+let slideTimer = null;
 
 function setCookie(name, value, days=30) {
   const d = new Date(); d.setTime(d.getTime() + (days*24*60*60*1000));
-  document.cookie = name + "=" + value + ";expires=" + d.toUTCString() + ";path=/";
+  document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/`;
 }
 function getCookie(name) {
   const n = name + "="; const ca = document.cookie.split(';');
-  for (let i=0;i<ca.length;i++){ let c=ca[i].trim(); if (c.indexOf(n)==0) return c.substring(n.length,c.length); }
+  for (let i=0;i<ca.length;i++){ let c=ca[i].trim(); if (c.indexOf(n)==0) return c.substring(n.length); }
   return "";
+}
+function pagesCount() {
+  const total = grid ? grid.querySelectorAll('.cam').length : 0;
+  return Math.max(1, Math.ceil(total / SLIDE_SIZE));
 }
 function showSlice() {
   if (!grid) return;
   const all = [...grid.querySelectorAll('.cam')];
-  const pages = Math.max(1, Math.ceil(all.length / SLIDE_SIZE));
-  slideIndex = ((slideIndex % pages) + pages) % pages;
+  if (!all.length) return;
+
+  const pages = pagesCount();
+  slideIndex = ((slideIndex % pages) + pages) % pages; // wrap (aman utk negatif/overflow)
+
   const start = slideIndex * SLIDE_SIZE;
   const end   = start + SLIDE_SIZE;
+
   all.forEach((c, idx) => { c.style.display = (idx>=start && idx<end) ? '' : 'none'; });
+
+  // sembunyiin pager server, munculin kontrol slideshow
   if (pager) pager.style.display = 'none';
   if (ctrls) ctrls.style.display = 'flex';
+
+  // persist
   setCookie('sandya_slideshow','1');
   setCookie('sandya_slide_index', String(slideIndex));
   localStorage.setItem('sandya_slideshow','1');
@@ -281,18 +297,48 @@ function updateBtn() {
   btnSlide.textContent = slideOn ? 'Stop Slideshow' : 'Slideshow Cameras';
   btnSlide.style.background = slideOn ? '#ef4444' : '#7c3aed';
 }
-function startAuto() { stopAuto(); slideTimer = setInterval(()=>{ slideIndex++; showSlice(); }, ROTATE_MS); }
-function stopAuto() { if (slideTimer) { clearInterval(slideTimer); slideTimer = null; } }
+function startAuto() {
+  stopAuto();
+  slideTimer = setInterval(() => {
+    slideIndex++;
+    showSlice();
+  }, ROTATE_MS);
+}
+function stopAuto() {
+  if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
+}
+
+// tombol utama
 btnSlide?.addEventListener('click', () => {
   slideOn = !slideOn;
-  if (slideOn) { slideIndex = 0; showSlice(); startAuto(); }
-  else { stopAuto(); clearSlice(); }
+  if (slideOn) {
+    slideIndex = 0;
+    showSlice();
+    startAuto();
+  } else {
+    stopAuto();
+    clearSlice();
+  }
   updateBtn();
 });
+
+// tombol prev/next
 document.getElementById('btnPrev')?.addEventListener('click', () => { slideIndex--; showSlice(); });
 document.getElementById('btnNext')?.addEventListener('click', () => { slideIndex++; showSlice(); });
-window.addEventListener('load', () => { updateBtn(); if (slideOn) { showSlice(); startAuto(); } });
+
+// pause auto-rotate saat app di-background, lanjut lagi saat balik
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopAuto();
+  else if (slideOn) startAuto();
+});
+
+// init state setelah load
+window.addEventListener('load', () => {
+  updateBtn();
+  if (slideOn) { showSlice(); startAuto(); }
+});
 </script>
+
 
 <style>
 /* ====== Grid & tile (TIDAK DIUBAH) ====== */
