@@ -333,6 +333,12 @@ slideMsSel?.addEventListener('change', ()=>{
 });
 
 // init state after first paint
+window.addEventListener('load', () => {
+  updateBtn();
+  if (slideOn) { showSlice(); startAuto(); }
+});
+
+// init state after first paint
 window.addEventListener('DOMContentLoaded', () => {
   updateBtn();
 
@@ -342,8 +348,9 @@ window.addEventListener('DOMContentLoaded', () => {
       showSlice(); 
       startAuto(); 
     }
-  }, 500); // 0.5 detik cukup aman
+  }, 1000); // 1 detik cukup aman
 });
+
 </script>
 
 <style>
