@@ -34,6 +34,9 @@
         $authRaw = $hasPwd ? 'local' : 'ldap';
       }
       $authLabel = ($authRaw === 'ldap') ? 'LDAP' : 'Local';
+
+      // Hanya superadmin yang bisa jadi parent untuk Link Accounts
+      $isParent = (($u['role'] ?? 'user') === 'superadmin');
     ?>
     <tr>
       <td><?= esc($u['username']) ?></td>
@@ -45,8 +48,15 @@
       </td>
       <td><?= esc($u['role']) ?></td>
       <td><?= ((int)$u['is_active']===1)?'✓':'—' ?></td>
-      <td style="display:flex;gap:8px">
-	    <a class="btn" href="/users/link/<?= (int)$u['id'] ?>">Link Accounts</a>
+      <td style="display:flex;gap:8px;align-items:center">
+        <?php if ($isParent): ?>
+          <!-- Parent superadmin: tombol aktif (menuju UI checklist link) -->
+          <a class="btn" style="background:#22c55e" href="/users/link/<?= (int)$u['id'] ?>">Link Accounts</a>
+        <?php else: ?>
+          <!-- Bukan superadmin: tombol di-grey (non-klik) -->
+          <span class="btn" style="background:#6b7280;cursor:not-allowed;opacity:.6" title="Hanya superadmin bisa jadi parent">Link Accounts</span>
+        <?php endif; ?>
+
         <a class="btn ghost" href="/users/<?= (int)$u['id'] ?>/edit">Edit</a>
         <form action="/users/<?= (int)$u['id'] ?>/delete" method="post" style="display:inline" onsubmit="return confirm('Delete user ini?')">
           <button class="btn" style="background:#ef4444">Delete</button>
