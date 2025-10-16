@@ -39,15 +39,12 @@
         <div class="thumb">
           <video class="vid" muted playsinline autoplay></video>
 
-          <!-- fullscreen -->
           <button class="btn ghost fs-btn" onclick="fsTile(event,this)" title="Fullscreen">⤢</button>
 
-          <!-- label -->
           <span class="chip cam-label" title="<?= esc($t['alias']) ?>">
             <?= esc($t['nvr']) ?> / <?= esc($t['monitor_id']) ?>
           </span>
 
-          <!-- actions (hidden; slide-in on hover/tap) -->
           <div class="actions">
             <a class="btn videos-btn" href="#" onclick="openVideos(this);return false;">Videos</a>
             <button class="btn sBtn" title="Resize" onclick="cycleSize(this);return false;">⇲</button>
@@ -57,7 +54,6 @@
     <?php endforeach; ?>
   </section>
 
-  <!-- Pagination -->
   <div id="pager" class="pagination" style="display:flex;gap:6px;justify-content:center;margin:16px 0">
     <?php
       $curr = (int)($page ?? 1);
@@ -67,12 +63,8 @@
       $mk   = function($p) use ($perQ, $qStr){ return '/dashboard?page='.$p.'&per='.$perQ.$qStr; };
       $window = 2; $start = max(1, $curr-$window); $end = min($max, $curr+$window);
     ?>
-
-    <?php if ($curr > 1): ?>
-      <a class="btn ghost" href="<?= $mk($curr-1) ?>">&laquo; Prev</a>
-    <?php else: ?>
-      <span class="btn ghost" style="opacity:.5;pointer-events:none">&laquo; Prev</span>
-    <?php endif; ?>
+    <?php if ($curr > 1): ?><a class="btn ghost" href="<?= $mk($curr-1) ?>">&laquo; Prev</a>
+    <?php else: ?><span class="btn ghost" style="opacity:.5;pointer-events:none">&laquo; Prev</span><?php endif; ?>
 
     <?php if ($start > 1): ?>
       <a class="btn ghost" href="<?= $mk(1) ?>">1</a>
@@ -99,7 +91,6 @@
     <?php endif; ?>
   </div>
 
-  <!-- Slideshow controls (muncul hanya saat slideshow ON) -->
   <div id="slideCtrls" style="display:none;gap:8px;justify-content:center;margin:16px 0">
     <button class="btn ghost" id="btnPrev">Previous</button>
     <button class="btn ghost" id="btnNext">Next</button>
@@ -108,274 +99,220 @@
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
 <script>
-/* ====== HLS attach (TIDAK DIUBAH) ====== */
+/* ======================== HLS ATTACH (auto-retry) ======================== */
 function attachHls(videoEl, url){
-  if (!videoEl) return null;
-  videoEl.style.width = '100%';
-  videoEl.style.height = '100%';
-  videoEl.style.objectFit = 'cover';
-  videoEl.style.background = '#000';
+  if (!videoEl || !url) return null;
+  Object.assign(videoEl.style, {width:'100%',height:'100%',objectFit:'cover',background:'#000'});
+  videoEl.setAttribute('playsinline','');
+  videoEl.muted = true;
+
   if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-    videoEl.src = url; videoEl.muted = true; videoEl.play().catch(()=>{});
+    videoEl.src = url;
+    videoEl.addEventListener('loadedmetadata', ()=> videoEl.play().catch(()=>{}), {once:true});
+    videoEl.play().catch(()=>{});
     return {type:'native'};
-  } else if (window.Hls && window.Hls.isSupported()) {
-    const hls = new Hls({liveDurationInfinity:true});
-    hls.loadSource(url); hls.attachMedia(videoEl);
-    videoEl.muted = true; videoEl.play().catch(()=>{});
+  }
+
+  if (window.Hls && window.Hls.isSupported()) {
+    const hls = new Hls({
+      liveDurationInfinity: true,
+      enableWorker: true,
+      lowLatencyMode: true,
+      backBufferLength: 60,
+      fragLoadingRetryDelay: 1000,
+      fragLoadingMaxRetry: 6,
+      manifestLoadingMaxRetry: 6,
+    });
+    hls.loadSource(url);
+    hls.attachMedia(videoEl);
+
+    const tryPlay = ()=> videoEl.play().catch(()=>{});
+    videoEl.addEventListener('loadedmetadata', tryPlay);
+    videoEl.addEventListener('canplay', tryPlay);
+
+    hls.on(Hls.Events.ERROR, function (evt, data) {
+      if (!data?.fatal) return;
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+        hls.startLoad();
+      } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+        hls.recoverMediaError();
+      } else {
+        hls.destroy();
+        setTimeout(()=> attachHls(videoEl, url), 1200);
+      }
+    });
     return {type:'hls', hls};
   }
   return null;
 }
-document.querySelectorAll('.cam').forEach(card => {
-  card._hlsObj = attachHls(card.querySelector('.vid'), card.dataset.hls);
+document.querySelectorAll('.cam').forEach(card=>{
+  const v=card.querySelector('.vid'); const u=card.dataset.hls;
+  card._hlsObj=attachHls(v,u);
 });
 
-/* ====== Fullscreen (TIDAK DIUBAH) ====== */
-function fsTile(ev, btn){
+/* ======================== FULLSCREEN ======================== */
+function fsTile(ev,btn){
   ev.stopPropagation();
   const elem = btn.closest('.cam').querySelector('.thumb');
   if (elem.requestFullscreen) elem.requestFullscreen();
   else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
 }
 
-/* ====== Open Videos (TIDAK DIUBAH) ====== */
+/* ======================== OPEN VIDEOS ======================== */
 function openVideos(btn){
-  const card  = btn.closest('.cam');
-  const nvrId = card?.dataset?.nvrId || card.getAttribute('data-nvr-id');
-  const mon   = card?.dataset?.mon   || card.getAttribute('data-mon');
-  const qs    = new URLSearchParams({ nvr_id: nvrId, mon });
-  window.open('/videos?'+qs.toString(), '_blank');
+  const card=btn.closest('.cam');
+  const nvrId=card?.dataset?.nvrId||card.getAttribute('data-nvr-id');
+  const mon=card?.dataset?.mon||card.getAttribute('data-mon');
+  const qs=new URLSearchParams({nvr_id:nvrId,mon});
+  window.open('/videos?'+qs.toString(),'_blank');
 }
 
-/* ====== Drag order persist (TIDAK DIUBAH) ====== */
-const grid = document.getElementById('grid');
-let dragSrc = null;
-grid?.addEventListener('dragstart', (e) => {
-  const card = e.target.closest('.cam'); if (!card) return;
-  dragSrc = card; e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', card.dataset.id);
+/* ======================== DRAG ORDER ======================== */
+const grid=document.getElementById('grid'); let dragSrc=null;
+grid?.addEventListener('dragstart',(e)=>{
+  const card=e.target.closest('.cam'); if(!card)return;
+  dragSrc=card; e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',card.dataset.id);
   card.classList.add('dragging');
 });
-grid?.addEventListener('dragover', (e) => {
+grid?.addEventListener('dragover',(e)=>{
   e.preventDefault();
-  const over = e.target.closest('.cam'); if (!over || over === dragSrc) return;
-  const cards = [...grid.querySelectorAll('.cam')];
-  const srcIndex  = cards.indexOf(dragSrc);
-  const overIndex = cards.indexOf(over);
-  if (srcIndex < overIndex) grid.insertBefore(dragSrc, over.nextSibling);
-  else grid.insertBefore(dragSrc, over);
+  const over=e.target.closest('.cam'); if(!over||over===dragSrc)return;
+  const cards=[...grid.querySelectorAll('.cam')];
+  const srcIndex=cards.indexOf(dragSrc);
+  const overIndex=cards.indexOf(over);
+  if(srcIndex<overIndex)grid.insertBefore(dragSrc,over.nextSibling);
+  else grid.insertBefore(dragSrc,over);
 });
-grid?.addEventListener('drop', (e) => { e.preventDefault(); saveOrder(); });
-grid?.addEventListener('dragend', (e) => {
-  const card = e.target.closest('.cam');
-  if (card) card.classList.remove('dragging');
-  saveOrder();
+grid?.addEventListener('drop',(e)=>{e.preventDefault();saveOrder();});
+grid?.addEventListener('dragend',(e)=>{
+  const card=e.target.closest('.cam'); if(card)card.classList.remove('dragging'); saveOrder();
 });
 function saveOrder(){
-  if (!grid) return;
-  const ids = [...grid.querySelectorAll('.cam')].map(c => c.dataset.id);
-  localStorage.setItem('sandya_nvr_dash_order', JSON.stringify(ids));
+  if(!grid)return;
+  const ids=[...grid.querySelectorAll('.cam')].map(c=>c.dataset.id);
+  localStorage.setItem('sandya_nvr_dash_order',JSON.stringify(ids));
 }
 (function applySavedOrder(){
   try{
-    const ids = JSON.parse(localStorage.getItem('sandya_nvr_dash_order') || '[]');
-    if (!Array.isArray(ids) || !ids.length || !grid) return;
-    const map = {};
-    [...grid.querySelectorAll('.cam')].forEach(c => map[c.dataset.id] = c);
-    ids.forEach(id => { if (map[id]) grid.appendChild(map[id]); });
+    const ids=JSON.parse(localStorage.getItem('sandya_nvr_dash_order')||'[]');
+    if(!Array.isArray(ids)||!ids.length||!grid)return;
+    const map={}; [...grid.querySelectorAll('.cam')].forEach(c=>map[c.dataset.id]=c);
+    ids.forEach(id=>{if(map[id])grid.appendChild(map[id]);});
   }catch(e){}
 })();
 
-/* ====== Resize per-tile (TIDAK DIUBAH) ====== */
-const SIZE_SEQ = [[1,1],[2,1],[2,2]];
-function loadSizes(){ try { return JSON.parse(localStorage.getItem('sandya_nvr_tile_sizes')||'{}') } catch(e){ return {}; } }
-function saveSizes(s){ localStorage.setItem('sandya_nvr_tile_sizes', JSON.stringify(s)); }
+/* ======================== TILE SIZE ======================== */
+const SIZE_SEQ=[[1,1],[2,1],[2,2]];
+function loadSizes(){try{return JSON.parse(localStorage.getItem('sandya_nvr_tile_sizes')||'{}')}catch(e){return{}}}
+function saveSizes(s){localStorage.setItem('sandya_nvr_tile_sizes',JSON.stringify(s));}
 function applySizes(){
-  const sizes = loadSizes();
+  const sizes=loadSizes();
   document.querySelectorAll('.cam').forEach(c=>{
-    const id = c.dataset.id;
-    const s  = sizes[id];
-    if (s && s.w && s.h) {
-      c.style.setProperty('--w', s.w);
-      c.style.setProperty('--h', s.h);
-    }
+    const id=c.dataset.id; const s=sizes[id];
+    if(s&&s.w&&s.h){c.style.setProperty('--w',s.w);c.style.setProperty('--h',s.h);}
   });
 }
 function cycleSize(btn){
-  const card = btn.closest('.cam');
-  const id   = card.dataset.id;
-  const sizes= loadSizes();
-  const curW = parseInt(getComputedStyle(card).getPropertyValue('--w')) || 1;
-  const curH = parseInt(getComputedStyle(card).getPropertyValue('--h')) || 1;
-  let idx = SIZE_SEQ.findIndex(([w,h])=> w===curW && h===curH);
-  idx = (idx+1) % SIZE_SEQ.length;
-  const [nw,nh] = SIZE_SEQ[idx];
-  card.style.setProperty('--w', nw);
-  card.style.setProperty('--h', nh);
-  sizes[id] = {w:nw, h:nh};
-  saveSizes(sizes);
+  const card=btn.closest('.cam'); const id=card.dataset.id; const sizes=loadSizes();
+  const curW=parseInt(getComputedStyle(card).getPropertyValue('--w'))||1;
+  const curH=parseInt(getComputedStyle(card).getPropertyValue('--h'))||1;
+  let idx=SIZE_SEQ.findIndex(([w,h])=>w===curW&&h===curH);
+  idx=(idx+1)%SIZE_SEQ.length; const [nw,nh]=SIZE_SEQ[idx];
+  card.style.setProperty('--w',nw); card.style.setProperty('--h',nh);
+  sizes[id]={w:nw,h:nh}; saveSizes(sizes);
 }
 applySizes();
 
-/* ====== Per page persist (tambah opsi '5', lainnya tetap) ====== */
-const perSel = document.getElementById('per');
-perSel?.addEventListener('change', () => {
-  localStorage.setItem('sandya_nvr_perpage', perSel.value);
+/* ======================== PER PAGE ======================== */
+const perSel=document.getElementById('per');
+perSel?.addEventListener('change',()=>{
+  localStorage.setItem('sandya_nvr_perpage',perSel.value);
   document.getElementById('flt').submit();
 });
 (function applySavedPerPage(){
   try{
-    const hasPerInUrl = new URLSearchParams(location.search).has('per');
-    const saved = localStorage.getItem('sandya_nvr_perpage');
-    if (!hasPerInUrl && saved && ['5','10','25','50','100'].includes(saved) && perSel.value !== saved){
-      perSel.value = saved;
-      document.getElementById('flt').submit();
+    const hasPerInUrl=new URLSearchParams(location.search).has('per');
+    const saved=localStorage.getItem('sandya_nvr_perpage');
+    if(!hasPerInUrl&&saved&&['5','10','25','50','100'].includes(saved)&&perSel.value!==saved){
+      perSel.value=saved; document.getElementById('flt').submit();
     }
   }catch(e){}
 })();
 
-/* ====== Slideshow (TIDAK DIUBAH) ====== */
-<script>
-/* ====== Slideshow (client-side, cookie persist) ====== */
-const SLIDE_SIZE = 5;                  // jumlah tile per halaman slideshow
-const ROTATE_MS  = 10000;              // 10 detik
-const btnSlide   = document.getElementById('btnSlide');
-const ctrls      = document.getElementById('slideCtrls');
-const pager      = document.getElementById('pager');
-const grid       = document.getElementById('grid');
+/* ======================== SLIDESHOW (10 detik) ======================== */
+const SLIDE_SIZE=5; const btnSlide=document.getElementById('btnSlide');
+const ctrls=document.getElementById('slideCtrls'); const pager=document.getElementById('pager');
+let slideOn=getCookie('sandya_slideshow')==='1'||localStorage.getItem('sandya_slideshow')==='1';
+let slideIndex=parseInt(getCookie('sandya_slide_index')||localStorage.getItem('sandya_slide_index')||'0')||0;
+let slideTimer=null; const ROTATE_MS=10000;
 
-let slideOn    = getCookie('sandya_slideshow') === '1' || localStorage.getItem('sandya_slideshow') === '1';
-let slideIndex = parseInt(getCookie('sandya_slide_index') || localStorage.getItem('sandya_slide_index') || '0') || 0;
-let slideTimer = null;
+function setCookie(n,v,d=30){const t=new Date();t.setTime(t.getTime()+(d*24*60*60*1000));document.cookie=n+"="+v+";expires="+t.toUTCString()+";path=/";}
+function getCookie(n){const p=n+"=";const a=document.cookie.split(';');for(let i=0;i<a.length;i++){let c=a[i].trim();if(c.indexOf(p)==0)return c.substring(p.length);}return"";}
 
-function setCookie(name, value, days=30) {
-  const d = new Date(); d.setTime(d.getTime() + (days*24*60*60*1000));
-  document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/`;
+function showSlice(){
+  if(!grid)return; const all=[...grid.querySelectorAll('.cam')]; const pages=Math.max(1,Math.ceil(all.length/SLIDE_SIZE));
+  slideIndex=((slideIndex%pages)+pages)%pages;
+  const start=slideIndex*SLIDE_SIZE; const end=start+SLIDE_SIZE;
+  all.forEach((c,idx)=>{c.style.display=(idx>=start&&idx<end)?'':'none';});
+  if(pager)pager.style.display='none'; if(ctrls)ctrls.style.display='flex';
+  setCookie('sandya_slideshow','1');setCookie('sandya_slide_index',String(slideIndex));
+  localStorage.setItem('sandya_slideshow','1');localStorage.setItem('sandya_slide_index',String(slideIndex));
+  nudgeVisibleVideos();
 }
-function getCookie(name) {
-  const n = name + "="; const ca = document.cookie.split(';');
-  for (let i=0;i<ca.length;i++){ let c=ca[i].trim(); if (c.indexOf(n)==0) return c.substring(n.length); }
-  return "";
+function clearSlice(){
+  if(!grid)return; [...grid.querySelectorAll('.cam')].forEach(c=>c.style.display='');
+  if(pager)pager.style.display='flex'; if(ctrls)ctrls.style.display='none';
+  setCookie('sandya_slideshow','0');localStorage.setItem('sandya_slideshow','0');
+  nudgeVisibleVideos();
 }
-function pagesCount() {
-  const total = grid ? grid.querySelectorAll('.cam').length : 0;
-  return Math.max(1, Math.ceil(total / SLIDE_SIZE));
+function updateBtn(){
+  if(!btnSlide)return; btnSlide.textContent=slideOn?'Stop Slideshow':'Slideshow Cameras';
+  btnSlide.style.background=slideOn?'#ef4444':'#7c3aed';
 }
-function showSlice() {
-  if (!grid) return;
-  const all = [...grid.querySelectorAll('.cam')];
-  if (!all.length) return;
+function startAuto(){stopAuto();slideTimer=setInterval(()=>{slideIndex++;showSlice();},ROTATE_MS);}
+function stopAuto(){if(slideTimer){clearInterval(slideTimer);slideTimer=null;}}
 
-  const pages = pagesCount();
-  slideIndex = ((slideIndex % pages) + pages) % pages; // wrap (aman utk negatif/overflow)
-
-  const start = slideIndex * SLIDE_SIZE;
-  const end   = start + SLIDE_SIZE;
-
-  all.forEach((c, idx) => { c.style.display = (idx>=start && idx<end) ? '' : 'none'; });
-
-  // sembunyiin pager server, munculin kontrol slideshow
-  if (pager) pager.style.display = 'none';
-  if (ctrls) ctrls.style.display = 'flex';
-
-  // persist
-  setCookie('sandya_slideshow','1');
-  setCookie('sandya_slide_index', String(slideIndex));
-  localStorage.setItem('sandya_slideshow','1');
-  localStorage.setItem('sandya_slide_index', String(slideIndex));
-}
-function clearSlice() {
-  if (!grid) return;
-  [...grid.querySelectorAll('.cam')].forEach(c => c.style.display = '');
-  if (pager) pager.style.display = 'flex';
-  if (ctrls) ctrls.style.display = 'none';
-  setCookie('sandya_slideshow','0');
-  localStorage.setItem('sandya_slideshow','0');
-}
-function updateBtn() {
-  if (!btnSlide) return;
-  btnSlide.textContent = slideOn ? 'Stop Slideshow' : 'Slideshow Cameras';
-  btnSlide.style.background = slideOn ? '#ef4444' : '#7c3aed';
-}
-function startAuto() {
-  stopAuto();
-  slideTimer = setInterval(() => {
-    slideIndex++;
-    showSlice();
-  }, ROTATE_MS);
-}
-function stopAuto() {
-  if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
-}
-
-// tombol utama
-btnSlide?.addEventListener('click', () => {
-  slideOn = !slideOn;
-  if (slideOn) {
-    slideIndex = 0;
-    showSlice();
-    startAuto();
-  } else {
-    stopAuto();
-    clearSlice();
-  }
+btnSlide?.addEventListener('click',()=>{
+  slideOn=!slideOn;
+  if(slideOn){slideIndex=0;showSlice();startAuto();}
+  else{stopAuto();clearSlice();}
   updateBtn();
 });
+document.getElementById('btnPrev')?.addEventListener('click',()=>{slideIndex--;showSlice();});
+document.getElementById('btnNext')?.addEventListener('click',()=>{slideIndex++;showSlice();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAuto();else if(slideOn)startAuto();});
 
-// tombol prev/next
-document.getElementById('btnPrev')?.addEventListener('click', () => { slideIndex--; showSlice(); });
-document.getElementById('btnNext')?.addEventListener('click', () => { slideIndex++; showSlice(); });
+window.addEventListener('load',()=>{updateBtn();if(slideOn){showSlice();startAuto();}});
 
-// pause auto-rotate saat app di-background, lanjut lagi saat balik
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) stopAuto();
-  else if (slideOn) startAuto();
-});
-
-// init state setelah load
-window.addEventListener('load', () => {
-  updateBtn();
-  if (slideOn) { showSlice(); startAuto(); }
-});
+/* auto-play visible videos */
+function nudgeVisibleVideos(){
+  document.querySelectorAll('.cam').forEach(card=>{
+    if(getComputedStyle(card).display!=='none'){
+      const v=card.querySelector('.vid');
+      if(v) v.play && v.play().catch(()=>{});
+    }
+  });
+}
 </script>
 
-
 <style>
-/* ====== Grid & tile (TIDAK DIUBAH) ====== */
-#grid.grid{
-  --row: 200px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  grid-auto-rows: var(--row);
-  grid-auto-flow: dense;
-  gap: 16px;
-}
-.cam{ grid-column: span var(--w,1); grid-row: span var(--h,1); min-height: calc(var(--h,1) * var(--row)); height: 100%; display: flex; flex-direction: column; }
-.cam.dragging { opacity:.6; transform:scale(.98); }
-
-.thumb{ position: relative; overflow:hidden; border-radius: 16px; flex: 1 1 auto; height: 100%; display: flex; }
-.vid{ width:100%; height:100%; object-fit:cover; background:#000; }
-
-.actions{
-  position:absolute; left:0; right:0; bottom:0;
-  display:flex; justify-content:center; align-items:center; gap:10px;
-  padding:12px;
-  transform: translateY(110%); opacity:0; transition: all .18s ease;
-  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.45) 60%, rgba(0,0,0,.65) 100%);
-}
-.thumb:hover .actions, .thumb:active .actions { transform: translateY(0%); opacity:1; }
-.videos-btn { background:#7c3aed; color:#fff; text-decoration:none; padding:10px 16px; border-radius:10px; font-weight:700; }
-.sBtn{ background:#111827; color:#e5e7eb; padding:10px 12px; border-radius:10px; }
-.fs-btn{ position:absolute; right:8px; top:8px; z-index:3; }
-.cam-label{ position:absolute; left:12px; top:10px; z-index:2 }
-
-/* kecil: input wrap rapi */
-@media (max-width: 768px){
-  #grid.grid{ grid-template-columns: 1fr; grid-auto-rows: 220px; gap:12px; }
-  .vid{ object-fit: contain; }
-  .fs-btn{ right:6px; top:6px; }
-}
-@media (max-width: 380px){
-  #grid.grid{ grid-auto-rows: 200px; }
-}
+#grid.grid{--row:200px;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  grid-auto-rows:var(--row);grid-auto-flow:dense;gap:16px;}
+.cam{grid-column:span var(--w,1);grid-row:span var(--h,1);min-height:calc(var(--h,1)*var(--row));
+  height:100%;display:flex;flex-direction:column;}
+.cam.dragging{opacity:.6;transform:scale(.98);}
+.thumb{position:relative;overflow:hidden;border-radius:16px;flex:1 1 auto;height:100%;display:flex;}
+.vid{width:100%;height:100%;object-fit:cover;background:#000;}
+.actions{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;align-items:center;gap:10px;
+  padding:12px;transform:translateY(110%);opacity:0;transition:all .18s ease;
+  background:linear-gradient(180deg,rgba(0,0,0,0)0%,rgba(0,0,0,.45)60%,rgba(0,0,0,.65)100%);}
+.thumb:hover .actions,.thumb:active .actions{transform:translateY(0%);opacity:1;}
+.videos-btn{background:#7c3aed;color:#fff;text-decoration:none;padding:10px 16px;border-radius:10px;font-weight:700;}
+.sBtn{background:#111827;color:#e5e7eb;padding:10px 12px;border-radius:10px;}
+.fs-btn{position:absolute;right:8px;top:8px;z-index:3;}
+.cam-label{position:absolute;left:12px;top:10px;z-index:2}
+@media(max-width:768px){#grid.grid{grid-template-columns:1fr;grid-auto-rows:220px;gap:12px;}
+  .vid{object-fit:contain;}.fs-btn{right:6px;top:6px;}}
+@media(max-width:380px){#grid.grid{grid-auto-rows:200px;}}
 </style>
