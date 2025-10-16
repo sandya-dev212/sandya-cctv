@@ -333,9 +333,16 @@ slideMsSel?.addEventListener('change', ()=>{
 });
 
 // init state after first paint
-window.addEventListener('load', () => {
+window.addEventListener('DOMContentLoaded', () => {
   updateBtn();
-  if (slideOn) { showSlice(); startAuto(); }
+
+  // delay dikit biar DOM kamera udah semua kebentuk
+  setTimeout(() => {
+    if (slideOn) { 
+      showSlice(); 
+      startAuto(); 
+    }
+  }, 500); // 0.5 detik cukup aman
 });
 </script>
 
