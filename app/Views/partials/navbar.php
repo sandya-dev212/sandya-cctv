@@ -30,7 +30,7 @@ function activeBtn(string $path): string {
   <div class="nav-left">
     <a href="/" class="brand" aria-label="Home">
       <img class="brand-logo" src="/assets/logo.png" alt="Sandya">
-      <span class="brand-title">Sandya <span class="accent">NVR</span></span>
+      <span class="brand-title">Sandya <span class="accent">Lensa</span></span>
     </a>
 
     <?php if (!$isLogin && $isAuthed): ?>

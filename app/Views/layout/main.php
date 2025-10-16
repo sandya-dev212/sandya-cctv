@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title><?= esc($title ?? 'Sandya NVR') ?></title>
+  <title><?= esc($title ?? 'Lensa') ?></title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
   <!-- Favicon / icons -->
