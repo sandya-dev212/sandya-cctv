@@ -122,7 +122,7 @@ function getCookie(name) {
   return "";
 }
 
-/* ====== HLS attach (PERSIS yang jalan) ====== */
+/* ====== HLS attach (as-is) ====== */
 function attachHls(videoEl, url){
   if (!videoEl) return null;
   videoEl.style.width = '100%';
@@ -140,13 +140,6 @@ function attachHls(videoEl, url){
   }
   return null;
 }
-
-/* attach semua video sekali di awal */
-(function initVideos(){
-  document.querySelectorAll('.cam').forEach(card => {
-    card._hlsObj = attachHls(card.querySelector('.vid'), card.dataset.hls);
-  });
-})();
 
 /* ====== Fullscreen ====== */
 function fsTile(ev, btn){
@@ -204,8 +197,8 @@ function saveOrder(){
   }catch(e){}
 })();
 
-/* ====== Resize per-tile (persist) ====== */
-const SIZE_SEQ = [[1,1],[2,1],[2,2]]; // cycle
+/* ====== Resize per-tile ====== */
+const SIZE_SEQ = [[1,1],[2,1],[2,2]];
 function loadSizes(){ try { return JSON.parse(localStorage.getItem('sandya_nvr_tile_sizes')||'{}') } catch(e){ return {}; } }
 function saveSizes(s){ localStorage.setItem('sandya_nvr_tile_sizes', JSON.stringify(s)); }
 function applySizes(){
@@ -235,7 +228,7 @@ function cycleSize(btn){
 }
 applySizes();
 
-/* ====== Per page persist ====== */
+/* ====== Per page persist (JANGAN auto-submit kalau slideshow ON) ====== */
 const perSel = document.getElementById('per');
 perSel?.addEventListener('change', () => {
   localStorage.setItem('sandya_nvr_perpage', perSel.value);
@@ -245,14 +238,18 @@ perSel?.addEventListener('change', () => {
   try{
     const hasPerInUrl = new URLSearchParams(location.search).has('per');
     const saved = localStorage.getItem('sandya_nvr_perpage');
+    const slideState = (getCookie('sandya_slideshow') === '1') || (localStorage.getItem('sandya_slideshow') === '1');
     if (!hasPerInUrl && saved && ['10','25','50','100'].includes(saved) && perSel.value !== saved){
       perSel.value = saved;
-      document.getElementById('flt').submit();
+      if (!slideState) {
+        // hanya auto submit kalau slideshow TIDAK ON
+        document.getElementById('flt').submit();
+      }
     }
   }catch(e){}
 })();
 
-/* ====== Slideshow dengan interval pilih + FIX start tanpa Apply ====== */
+/* ====== Slideshow + interval ====== */
 const SLIDE_SIZE = 5;
 const btnSlide   = document.getElementById('btnSlide');
 const ctrls      = document.getElementById('slideCtrls');
@@ -281,17 +278,15 @@ function showSlice() {
   if (!all.length) return;
 
   const pages = Math.max(1, Math.ceil(all.length / SLIDE_SIZE));
-  slideIndex = ((slideIndex % pages) + pages) % pages; // wrap
+  slideIndex = ((slideIndex % pages) + pages) % pages;
   const start = slideIndex * SLIDE_SIZE;
   const end   = start + SLIDE_SIZE;
 
   all.forEach((c, idx) => { c.style.display = (idx>=start && idx<end) ? '' : 'none'; });
 
-  // hide server pager, show our controls
   if (pager) pager.style.display = 'none';
   if (ctrls) ctrls.style.display = 'flex';
 
-  // persist
   setCookie('sandya_slideshow','1');
   setCookie('sandya_slide_index', String(slideIndex));
   localStorage.setItem('sandya_slideshow','1');
@@ -313,27 +308,28 @@ function updateBtn() {
   btnSlide.style.background = slideOn ? '#ef4444' : '#7c3aed';
 }
 
-function startAuto() {
-  stopAuto();
-  slideTimer = setInterval(()=>{ slideIndex++; showSlice(); }, ROTATE_MS);
-}
-function stopAuto() {
-  if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
+function startAuto() { stopAuto(); slideTimer = setInterval(()=>{ slideIndex++; showSlice(); }, ROTATE_MS); }
+function stopAuto()  { if (slideTimer) { clearInterval(slideTimer); slideTimer = null; } }
+
+/* Pastikan tiles sudah ada baru jalanin callback */
+function ensureCamsThen(cb, tries=0){
+  const all = cams();
+  if (all.length) { cb(); return; }
+  if (tries > 25) { cb(); return; } // tetap paksa jalan biar nggak “nunggu selamanya”
+  setTimeout(()=>ensureCamsThen(cb, tries+1), 120);
 }
 
-/* CLICK: langsung jalan tanpa Apply */
+/* Klik Start/Stop — TANPA Apply */
 btnSlide?.addEventListener('click', () => {
   slideOn = !slideOn;
   if (slideOn) {
     slideIndex = 0;
-    // pastikan DOM siap & elemen kamera sudah ada
-    requestAnimationFrame(()=>{ showSlice(); startAuto(); });
+    updateBtn();
+    ensureCamsThen(()=>{ showSlice(); startAuto(); });
   } else {
-    stopAuto(); clearSlice();
+    stopAuto(); clearSlice(); updateBtn();
   }
-  updateBtn();
 });
-
 document.getElementById('btnPrev')?.addEventListener('click', () => { slideIndex--; showSlice(); });
 document.getElementById('btnNext')?.addEventListener('click', () => { slideIndex++; showSlice(); });
 
@@ -346,13 +342,23 @@ slideMsSel?.addEventListener('change', ()=>{
   if (slideOn) { startAuto(); }
 });
 
-/* INIT: tanpa perlu Apply */
+/* Observer: kalau grid di-render ulang, slideshow auto re-apply */
+if (grid) {
+  const mo = new MutationObserver((muts) => {
+    if (!slideOn) return;
+    // ada child list berubah → pastikan slice tetep kepakai
+    ensureCamsThen(()=>{ showSlice(); }, 0);
+  });
+  mo.observe(grid, {childList:true, subtree:false});
+}
+
+/* INIT on load: jalan walau habis Reset */
 (function initSlide(){
-  // jalankan setelah DOM render + sedikit delay supaya .cam sudah lengkap
   const boot = () => {
     updateBtn();
     if (slideOn) {
-      setTimeout(() => { showSlice(); startAuto(); }, 150);
+      // sedikit delay supaya DOM tiles siap + HLS attach nggak keburu di-hide
+      setTimeout(() => { ensureCamsThen(()=>{ showSlice(); startAuto(); }); }, 150);
     }
   };
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
