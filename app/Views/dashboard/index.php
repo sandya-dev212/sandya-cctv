@@ -1,3 +1,4 @@
+<?php /* Views/dashboard/index.php */ ?>
 <section class="page-head" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
   <h1 style="margin-right:auto">Dashboard</h1>
 
@@ -121,7 +122,7 @@ function getCookie(name) {
   return "";
 }
 
-/* ====== HLS attach (PERSIS dari versi yang jalan) ====== */
+/* ====== HLS attach (PERSIS yang jalan) ====== */
 function attachHls(videoEl, url){
   if (!videoEl) return null;
   videoEl.style.width = '100%';
@@ -139,9 +140,13 @@ function attachHls(videoEl, url){
   }
   return null;
 }
-document.querySelectorAll('.cam').forEach(card => {
-  card._hlsObj = attachHls(card.querySelector('.vid'), card.dataset.hls);
-});
+
+/* attach semua video sekali di awal */
+(function initVideos(){
+  document.querySelectorAll('.cam').forEach(card => {
+    card._hlsObj = attachHls(card.querySelector('.vid'), card.dataset.hls);
+  });
+})();
 
 /* ====== Fullscreen ====== */
 function fsTile(ev, btn){
@@ -247,16 +252,14 @@ perSel?.addEventListener('change', () => {
   }catch(e){}
 })();
 
-/* ====== Slideshow (client-side, cookie persist) ====== */
+/* ====== Slideshow dengan interval pilih + FIX start tanpa Apply ====== */
 const SLIDE_SIZE = 5;
 const btnSlide   = document.getElementById('btnSlide');
 const ctrls      = document.getElementById('slideCtrls');
 const pager      = document.getElementById('pager');
 const slideMsSel = document.getElementById('slideMsSel');
 
-// interval (ms): default 8000 (biar sama dengan versi yang jalan)
 let ROTATE_MS = parseInt(getCookie('sandya_slide_ms') || localStorage.getItem('sandya_slide_ms') || '8000') || 8000;
-// set dropdown ke nilai tersimpan
 if (slideMsSel) {
   const sec = Math.max(1, Math.round(ROTATE_MS/1000));
   let matched = false;
@@ -266,13 +269,17 @@ if (slideMsSel) {
   if (!matched) slideMsSel.value = String(sec);
 }
 
-let slideOn      = getCookie('sandya_slideshow') === '1' || localStorage.getItem('sandya_slideshow') === '1';
-let slideIndex   = parseInt(getCookie('sandya_slide_index') || localStorage.getItem('sandya_slide_index') || '0') || 0;
-let slideTimer   = null;
+let slideOn    = (getCookie('sandya_slideshow') === '1') || (localStorage.getItem('sandya_slideshow') === '1');
+let slideIndex = parseInt(getCookie('sandya_slide_index') || localStorage.getItem('sandya_slide_index') || '0') || 0;
+let slideTimer = null;
+
+function cams(){ return [...(grid?.querySelectorAll('.cam')||[])]; }
 
 function showSlice() {
   if (!grid) return;
-  const all = [...grid.querySelectorAll('.cam')];
+  const all = cams();
+  if (!all.length) return;
+
   const pages = Math.max(1, Math.ceil(all.length / SLIDE_SIZE));
   slideIndex = ((slideIndex % pages) + pages) % pages; // wrap
   const start = slideIndex * SLIDE_SIZE;
@@ -284,25 +291,28 @@ function showSlice() {
   if (pager) pager.style.display = 'none';
   if (ctrls) ctrls.style.display = 'flex';
 
-  // update persist
+  // persist
   setCookie('sandya_slideshow','1');
   setCookie('sandya_slide_index', String(slideIndex));
   localStorage.setItem('sandya_slideshow','1');
   localStorage.setItem('sandya_slide_index', String(slideIndex));
 }
+
 function clearSlice() {
   if (!grid) return;
-  [...grid.querySelectorAll('.cam')].forEach(c => c.style.display = '');
+  cams().forEach(c => c.style.display = '');
   if (pager) pager.style.display = 'flex';
   if (ctrls) ctrls.style.display = 'none';
   setCookie('sandya_slideshow','0');
   localStorage.setItem('sandya_slideshow','0');
 }
+
 function updateBtn() {
   if (!btnSlide) return;
   btnSlide.textContent = slideOn ? 'Stop Slideshow' : 'Slideshow Cameras';
   btnSlide.style.background = slideOn ? '#ef4444' : '#7c3aed';
 }
+
 function startAuto() {
   stopAuto();
   slideTimer = setInterval(()=>{ slideIndex++; showSlice(); }, ROTATE_MS);
@@ -310,47 +320,47 @@ function startAuto() {
 function stopAuto() {
   if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
 }
+
+/* CLICK: langsung jalan tanpa Apply */
 btnSlide?.addEventListener('click', () => {
   slideOn = !slideOn;
   if (slideOn) {
     slideIndex = 0;
-    showSlice(); startAuto();
+    // pastikan DOM siap & elemen kamera sudah ada
+    requestAnimationFrame(()=>{ showSlice(); startAuto(); });
   } else {
     stopAuto(); clearSlice();
   }
   updateBtn();
 });
+
 document.getElementById('btnPrev')?.addEventListener('click', () => { slideIndex--; showSlice(); });
 document.getElementById('btnNext')?.addEventListener('click', () => { slideIndex++; showSlice(); });
 
-// simpan + apply interval baru
+/* Ubah interval → restart timer kalau sedang ON */
 slideMsSel?.addEventListener('change', ()=>{
   const sec = parseInt(slideMsSel.value) || 8;
   ROTATE_MS = sec * 1000;
   setCookie('sandya_slide_ms', String(ROTATE_MS));
   localStorage.setItem('sandya_slide_ms', String(ROTATE_MS));
-  if (slideOn) { startAuto(); } // restart timer dengan interval baru
+  if (slideOn) { startAuto(); }
 });
 
-// init state after first paint
-window.addEventListener('load', () => {
-  updateBtn();
-  if (slideOn) { showSlice(); startAuto(); }
-});
-
-// init state after first paint
-window.addEventListener('DOMContentLoaded', () => {
-  updateBtn();
-
-  // delay dikit biar DOM kamera udah semua kebentuk
-  setTimeout(() => {
-    if (slideOn) { 
-      showSlice(); 
-      startAuto(); 
+/* INIT: tanpa perlu Apply */
+(function initSlide(){
+  // jalankan setelah DOM render + sedikit delay supaya .cam sudah lengkap
+  const boot = () => {
+    updateBtn();
+    if (slideOn) {
+      setTimeout(() => { showSlice(); startAuto(); }, 150);
     }
-  }, 1000); // 1 detik cukup aman
-});
-
+  };
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(boot, 0);
+  } else {
+    document.addEventListener('DOMContentLoaded', boot, {once:true});
+  }
+})();
 </script>
 
 <style>
