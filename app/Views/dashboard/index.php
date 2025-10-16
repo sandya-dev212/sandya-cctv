@@ -2,12 +2,15 @@
   <h1 style="margin-right:auto">Dashboard</h1>
 
   <!-- Filter -->
-  <form method="get" action="/dashboard" id="flt" style="display:flex;gap:8px;align-items:center">
-    <input type="text" name="q" value="<?= esc($q ?? '') ?>" placeholder="Cari alias/NVR/monitor..." style="min-width:240px">
+  <form method="get" action="/dashboard" id="flt"
+        style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:100%">
+    <input type="text" name="q" value="<?= esc($q ?? '') ?>"
+           placeholder="Cari alias/NVR/monitor..."
+           style="min-width:240px;flex:1 1 260px;max-width:420px">
 
     <label for="per">Per page</label>
     <select name="per" id="per">
-      <?php foreach ([10,25,50,100] as $opt): ?>
+      <?php foreach ([5,10,25,50,100] as $opt): ?>
         <option value="<?= $opt ?>" <?= (isset($per) && (int)$per === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
       <?php endforeach; ?>
     </select>
@@ -59,7 +62,7 @@
     <?php
       $curr = (int)($page ?? 1);
       $max  = (int)($pages ?? 1);
-      $perQ = (int)($per ?? 10);
+      $perQ = (int)($per ?? 5);
       $qStr = ($q ?? '') !== '' ? '&q=' . urlencode($q) : '';
       $mk   = function($p) use ($perQ, $qStr){ return '/dashboard?page='.$p.'&per='.$perQ.$qStr; };
       $window = 2; $start = max(1, $curr-$window); $end = min($max, $curr+$window);
@@ -105,7 +108,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
 <script>
-/* ====== HLS attach ====== */
+/* ====== HLS attach (TIDAK DIUBAH) ====== */
 function attachHls(videoEl, url){
   if (!videoEl) return null;
   videoEl.style.width = '100%';
@@ -127,7 +130,7 @@ document.querySelectorAll('.cam').forEach(card => {
   card._hlsObj = attachHls(card.querySelector('.vid'), card.dataset.hls);
 });
 
-/* ====== Fullscreen ====== */
+/* ====== Fullscreen (TIDAK DIUBAH) ====== */
 function fsTile(ev, btn){
   ev.stopPropagation();
   const elem = btn.closest('.cam').querySelector('.thumb');
@@ -135,7 +138,7 @@ function fsTile(ev, btn){
   else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
 }
 
-/* ====== Open Videos ====== */
+/* ====== Open Videos (TIDAK DIUBAH) ====== */
 function openVideos(btn){
   const card  = btn.closest('.cam');
   const nvrId = card?.dataset?.nvrId || card.getAttribute('data-nvr-id');
@@ -144,7 +147,7 @@ function openVideos(btn){
   window.open('/videos?'+qs.toString(), '_blank');
 }
 
-/* ====== Drag order persist ====== */
+/* ====== Drag order persist (TIDAK DIUBAH) ====== */
 const grid = document.getElementById('grid');
 let dragSrc = null;
 grid?.addEventListener('dragstart', (e) => {
@@ -183,8 +186,8 @@ function saveOrder(){
   }catch(e){}
 })();
 
-/* ====== Resize per-tile (persist) ====== */
-const SIZE_SEQ = [[1,1],[2,1],[2,2]]; // cycle
+/* ====== Resize per-tile (TIDAK DIUBAH) ====== */
+const SIZE_SEQ = [[1,1],[2,1],[2,2]];
 function loadSizes(){ try { return JSON.parse(localStorage.getItem('sandya_nvr_tile_sizes')||'{}') } catch(e){ return {}; } }
 function saveSizes(s){ localStorage.setItem('sandya_nvr_tile_sizes', JSON.stringify(s)); }
 function applySizes(){
@@ -214,7 +217,7 @@ function cycleSize(btn){
 }
 applySizes();
 
-/* ====== Per page persist ====== */
+/* ====== Per page persist (tambah opsi '5', lainnya tetap) ====== */
 const perSel = document.getElementById('per');
 perSel?.addEventListener('change', () => {
   localStorage.setItem('sandya_nvr_perpage', perSel.value);
@@ -224,14 +227,14 @@ perSel?.addEventListener('change', () => {
   try{
     const hasPerInUrl = new URLSearchParams(location.search).has('per');
     const saved = localStorage.getItem('sandya_nvr_perpage');
-    if (!hasPerInUrl && saved && ['10','25','50','100'].includes(saved) && perSel.value !== saved){
+    if (!hasPerInUrl && saved && ['5','10','25','50','100'].includes(saved) && perSel.value !== saved){
       perSel.value = saved;
       document.getElementById('flt').submit();
     }
   }catch(e){}
 })();
 
-/* ====== Slideshow (client-side, cookie persist) ====== */
+/* ====== Slideshow (TIDAK DIUBAH) ====== */
 const SLIDE_SIZE = 5;
 const btnSlide   = document.getElementById('btnSlide');
 const ctrls      = document.getElementById('slideCtrls');
@@ -254,17 +257,12 @@ function showSlice() {
   if (!grid) return;
   const all = [...grid.querySelectorAll('.cam')];
   const pages = Math.max(1, Math.ceil(all.length / SLIDE_SIZE));
-  slideIndex = ((slideIndex % pages) + pages) % pages; // wrap
+  slideIndex = ((slideIndex % pages) + pages) % pages;
   const start = slideIndex * SLIDE_SIZE;
   const end   = start + SLIDE_SIZE;
-
   all.forEach((c, idx) => { c.style.display = (idx>=start && idx<end) ? '' : 'none'; });
-
-  // hide server pager, show our controls
   if (pager) pager.style.display = 'none';
   if (ctrls) ctrls.style.display = 'flex';
-
-  // update persist
   setCookie('sandya_slideshow','1');
   setCookie('sandya_slide_index', String(slideIndex));
   localStorage.setItem('sandya_slideshow','1');
@@ -283,35 +281,21 @@ function updateBtn() {
   btnSlide.textContent = slideOn ? 'Stop Slideshow' : 'Slideshow Cameras';
   btnSlide.style.background = slideOn ? '#ef4444' : '#7c3aed';
 }
-function startAuto() {
-  stopAuto();
-  slideTimer = setInterval(()=>{ slideIndex++; showSlice(); }, ROTATE_MS);
-}
-function stopAuto() {
-  if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
-}
+function startAuto() { stopAuto(); slideTimer = setInterval(()=>{ slideIndex++; showSlice(); }, ROTATE_MS); }
+function stopAuto() { if (slideTimer) { clearInterval(slideTimer); slideTimer = null; } }
 btnSlide?.addEventListener('click', () => {
   slideOn = !slideOn;
-  if (slideOn) {
-    slideIndex = 0;
-    showSlice(); startAuto();
-  } else {
-    stopAuto(); clearSlice();
-  }
+  if (slideOn) { slideIndex = 0; showSlice(); startAuto(); }
+  else { stopAuto(); clearSlice(); }
   updateBtn();
 });
 document.getElementById('btnPrev')?.addEventListener('click', () => { slideIndex--; showSlice(); });
 document.getElementById('btnNext')?.addEventListener('click', () => { slideIndex++; showSlice(); });
-
-// init state after first paint
-window.addEventListener('load', () => {
-  updateBtn();
-  if (slideOn) { showSlice(); startAuto(); }
-});
+window.addEventListener('load', () => { updateBtn(); if (slideOn) { showSlice(); startAuto(); } });
 </script>
 
 <style>
-/* ====== Grid & tile ====== */
+/* ====== Grid & tile (TIDAK DIUBAH) ====== */
 #grid.grid{
   --row: 200px;
   display: grid;
@@ -320,41 +304,26 @@ window.addEventListener('load', () => {
   grid-auto-flow: dense;
   gap: 16px;
 }
-.cam{
-  grid-column: span var(--w,1);
-  grid-row: span var(--h,1);
-  min-height: calc(var(--h,1) * var(--row));
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
+.cam{ grid-column: span var(--w,1); grid-row: span var(--h,1); min-height: calc(var(--h,1) * var(--row)); height: 100%; display: flex; flex-direction: column; }
 .cam.dragging { opacity:.6; transform:scale(.98); }
 
-.thumb{
-  position: relative;
-  overflow:hidden;
-  border-radius: 16px;
-  flex: 1 1 auto;
-  height: 100%;
-  display: flex;
-}
+.thumb{ position: relative; overflow:hidden; border-radius: 16px; flex: 1 1 auto; height: 100%; display: flex; }
 .vid{ width:100%; height:100%; object-fit:cover; background:#000; }
 
 .actions{
   position:absolute; left:0; right:0; bottom:0;
   display:flex; justify-content:center; align-items:center; gap:10px;
   padding:12px;
-  transform: translateY(110%);
-  opacity:0; transition: all .18s ease;
+  transform: translateY(110%); opacity:0; transition: all .18s ease;
   background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.45) 60%, rgba(0,0,0,.65) 100%);
 }
-.thumb:hover .actions,
-.thumb:active .actions { transform: translateY(0%); opacity:1; }
+.thumb:hover .actions, .thumb:active .actions { transform: translateY(0%); opacity:1; }
 .videos-btn { background:#7c3aed; color:#fff; text-decoration:none; padding:10px 16px; border-radius:10px; font-weight:700; }
 .sBtn{ background:#111827; color:#e5e7eb; padding:10px 12px; border-radius:10px; }
 .fs-btn{ position:absolute; right:8px; top:8px; z-index:3; }
 .cam-label{ position:absolute; left:12px; top:10px; z-index:2 }
 
+/* kecil: input wrap rapi */
 @media (max-width: 768px){
   #grid.grid{ grid-template-columns: 1fr; grid-auto-rows: 220px; gap:12px; }
   .vid{ object-fit: contain; }
