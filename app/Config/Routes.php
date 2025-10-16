@@ -60,3 +60,9 @@ $routes->get('videos',       'Videos::index');   // UI list rekaman
 $routes->get('videos/data',  'Videos::data');    // proxy Get Videos Shinobi (JSON)
 $routes->get('videos/monitors', 'Videos::monitors'); // dropdown camera per NVR
 
+// ---------- Linked Account ----------
+$routes->get('users/link/(:num)', 'AccountLinks::linkUI/$1');           // UI checklist
+$routes->post('users/link/save', 'AccountLinks::saveLinks');            // Simpan link
+$routes->get('account-switcher', 'AccountLinks::switcherPopup');        // HTML popup utk navbar
+$routes->post('switch-as/(:num)', 'AccountLinks::switchAs/$1');         // Superadmin → child
+$routes->post('switch-to-parent', 'AccountLinks::switchToParent');      // Child → parent (wajib password)

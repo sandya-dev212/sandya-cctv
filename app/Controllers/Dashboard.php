@@ -22,9 +22,9 @@ class Dashboard extends BaseController
             return redirect()->to('/login');
         }
 
-        $q       = trim((string) ($this->request->getGet('q') ?? ''));
-        $perPage = (int) ($this->request->getGet('per') ?? 10);
-        $perPage = in_array($perPage, [10, 25, 50, 100], true) ? $perPage : 10;
+		$q       = trim((string) ($this->request->getGet('q') ?? ''));
+		$perPage = (int) ($this->request->getGet('per') ?? 5);
+		$perPage = in_array($perPage, [5, 10, 25, 50, 100], true) ? $perPage : 5;
 
         $role   = (string) (session('role') ?? 'user');
         $userId = (int) (session('user_id') ?? session('id') ?? 0);
