@@ -4,100 +4,100 @@ namespace App\Controllers;
 use App\Controllers\BaseController;
 use App\Models\UserModel;
 use App\Libraries\Ldap_lib;
-use CodeIgniter\HTTP\ResponseInterface;
 use Config\Database;
 
 class AccountLinks extends BaseController
 {
-    /** Guard superadmin */
-    private function mustSuperadmin()
+    /* ========= Helpers ========= */
+
+    private function mustLogged()
     {
         if (!session('isLoggedIn')) return redirect()->to('/login');
+        return null;
+    }
+
+    private function mustSuperadmin()
+    {
+        if ($r = $this->mustLogged()) return $r;
         if ((session('role') ?? '') !== 'superadmin') return redirect()->to('/dashboard');
         return null;
     }
 
-    /** Helper DB */
-    private function db()
-    {
-        return Database::connect();
-    }
+    private function db() { return Database::connect(); }
 
-    /** Ambil semua child yang linked ke parent */
     private function getLinkedChildIds(int $parentId): array
     {
-        $db   = $this->db();
-        $rows = $db->table('user_links')->select('child_user_id')->where('parent_user_id', $parentId)->get()->getResultArray();
-        return array_map(fn($r) => (int)$r['child_user_id'], $rows);
+        $rows = $this->db()->table('user_links')
+            ->select('child_user_id')->where('parent_user_id', $parentId)
+            ->get()->getResultArray();
+        return array_map(fn($r)=> (int)$r['child_user_id'], $rows);
     }
 
-    /** Cek apakah parent superadmin & link valid */
     private function isLinked(int $parentId, int $childId): bool
     {
-        $db = $this->db();
-        $row = $db->table('user_links')->where([
-            'parent_user_id' => $parentId,
-            'child_user_id'  => $childId,
+        $r = $this->db()->table('user_links')->where([
+            'parent_user_id'=>$parentId,'child_user_id'=>$childId
         ])->get()->getFirstRow();
-        return (bool)$row;
+        return (bool)$r;
     }
 
-    /** UI: Checklist link akun (dipanggil dari Users List) */
-    public function linkUI($parentId = null)
+    /* ========= Link UI ========= */
+
+    // /users/link/{parentId}
+    public function linkUI($parentId=null)
     {
         if ($r = $this->mustSuperadmin()) return $r;
 
-        $parentId = (int) $parentId;
-        if ($parentId <= 0) return redirect()->to('/users');
+        $parentId = (int)$parentId;
+        if ($parentId<=0) return redirect()->to('/users');
 
-        $um     = new UserModel();
+        $um = new UserModel();
         $parent = $um->find($parentId);
         if (!$parent) return redirect()->to('/users');
 
-        // Hanya boleh link untuk parent superadmin
+        // Parent HARUS superadmin
         if (($parent['role'] ?? 'user') !== 'superadmin') {
             return $this->response->setStatusCode(403)->setBody('Parent harus superadmin.');
         }
 
-        // List semua user aktif (kecuali parent)
-        $users = $um->select('*')->where('id !=', $parentId)->where('is_active', 1)->orderBy('username')->findAll();
+        // Ambil semua user aktif kecuali parent, DAN sembunyikan superadmin (child wajib user)
+        $users = $um->select('*')
+            ->where('id !=', $parentId)
+            ->where('is_active', 1)
+            ->where('role', 'user')                // <— hanya user yang bisa jadi child
+            ->orderBy('username')
+            ->findAll();
 
         $linked = $this->getLinkedChildIds($parentId);
         $csrf   = csrf_hash();
 
-        $html = $this->renderLinkUI($parent, $users, $linked, $csrf);
-        return $this->response->setStatusCode(200)->setBody($html);
+        return $this->response->setStatusCode(200)
+            ->setBody($this->renderLinkUI($parent, $users, $linked, $csrf));
     }
 
-    /** Render HTML untuk UI checklist */
     private function renderLinkUI(array $parent, array $users, array $linkedIds, string $csrf): string
     {
         $parentSafe = esc($parent['username']);
         ob_start(); ?>
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Link Accounts – <?= $parentSafe ?></title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 body{background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
-.wrap{max-width:960px;margin:40px auto;padding:20px}
+.wrap{max-width:1120px;margin:40px auto;padding:20px}
 .h{display:flex;align-items:center;gap:12px;margin-bottom:16px}
 .badge{background:#1f2937;border:1px solid #374151;border-radius:999px;padding:6px 12px;font-size:12px}
 .card{background:#0f172a;border:1px solid #1f2937;border-radius:16px;padding:16px}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.item{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:#0b1220;border:1px solid #1f2937}
+.item{display:flex;align-items:center;gap:8px;padding:10px;border-radius:10px;background:#0b1220;border:1px solid #1f2937}
 .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
 .btn{padding:10px 14px;border-radius:10px;border:1px solid #374151;background:#111827;color:#e5e7eb;text-decoration:none;cursor:pointer}
 .btn.primary{background:#7c3aed;border-color:#7c3aed;color:#0b1020;font-weight:700}
 .search{margin-bottom:12px}
 .search input{width:100%;padding:10px;border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb}
-@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.grid{grid-template-columns:1fr}}
-</style>
-</head>
-<body>
+</style></head><body>
 <div class="wrap">
   <div class="h">
     <h2 style="margin:0">Link Accounts</h2>
@@ -114,19 +114,14 @@ body{background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe 
 
     <div class="grid" id="list">
       <?php foreach ($users as $u):
-          $id   = (int)$u['id'];
-          $nm   = esc($u['username']);
-          $fn   = esc($u['full_name'] ?? '');
-          $em   = esc($u['email'] ?? '');
-          $rl   = esc($u['role'] ?? 'user');
-          $auth = esc($u['auth_source'] ?? 'local');
-          $chk  = in_array($id, $linkedIds, true) ? 'checked' : '';
+        $id=(int)$u['id']; $nm=esc($u['username']); $fn=esc($u['full_name']??''); $em=esc($u['email']??'');
+        $chk = in_array($id,$linkedIds,true)?'checked':'';
       ?>
       <label class="item" data-text="<?= strtolower($u['username'].' '.$u['full_name'].' '.$u['email']) ?>">
         <input type="checkbox" name="child_ids[]" value="<?= $id ?>" <?= $chk ?>>
         <div>
           <div><strong><?= $nm ?></strong> <span style="opacity:.7">(#<?= $id ?>)</span></div>
-          <div style="font-size:12px;opacity:.8"><?= $fn ?> · <?= $em ?> · role: <?= $rl ?> · auth: <?= strtoupper($auth) ?></div>
+          <div style="font-size:12px;opacity:.8"><?= $fn ?> · <?= $em ?> · role: user</div>
         </div>
       </label>
       <?php endforeach; ?>
@@ -138,262 +133,229 @@ body{background:#0b1020;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe 
     </div>
   </form>
 </div>
-
 <script>
-const q = document.getElementById('q');
-const list = document.getElementById('list');
-q?.addEventListener('input', () => {
-  const s = q.value.toLowerCase();
-  list.querySelectorAll('.item').forEach(it => {
-    const t = it.getAttribute('data-text') || '';
-    it.style.display = t.includes(s) ? '' : 'none';
+const q=document.getElementById('q'), list=document.getElementById('list');
+q?.addEventListener('input',()=>{const s=q.value.toLowerCase();
+  list.querySelectorAll('.item').forEach(it=>{
+    const t=it.getAttribute('data-text')||''; it.style.display=t.includes(s)?'':'none';
   });
 });
 </script>
-</body>
-</html>
-<?php
-        return ob_get_clean();
-    }
+</body></html>
+<?php return ob_get_clean(); }
 
-    /** Action: Simpan link (replace penuh: set baru = checklist) */
+    // POST /users/link/save
     public function saveLinks()
     {
         if ($r = $this->mustSuperadmin()) return $r;
 
-        $parentId = (int) $this->request->getPost('parent_id');
+        $parentId = (int)$this->request->getPost('parent_id');
         $childIds = $this->request->getPost('child_ids') ?? [];
+        if ($parentId<=0) return redirect()->to('/users')->with('error','Parent invalid.');
+        if (!is_array($childIds)) $childIds=[];
 
-        if ($parentId <= 0) return redirect()->to('/users')->with('error','Parent invalid.');
-        if (!is_array($childIds)) $childIds = [];
-
-        // Validasi parent harus superadmin
-        $um     = new UserModel();
+        $um = new UserModel();
         $parent = $um->find($parentId);
-        if (!$parent || ($parent['role'] ?? 'user') !== 'superadmin') {
+        if (!$parent || ($parent['role']??'user')!=='superadmin') {
             return redirect()->to('/users')->with('error','Parent bukan superadmin.');
         }
 
-        // Bersihin self-link & duplikat
-        $childIds = array_unique(array_filter(array_map('intval', $childIds), fn($id) => $id > 0 && $id !== $parentId));
+        // hanya user (role=user) yang boleh jadi child
+        $childIds = array_unique(array_filter(array_map('intval',$childIds), fn($id)=>$id>0 && $id!=$parentId));
+        if ($childIds) {
+            $roles = $um->select('id,role')->whereIn('id',$childIds)->findAll();
+            $childIds = array_map(fn($r)=> (int)$r['id'], array_filter($roles, fn($r)=>($r['role']??'user')==='user'));
+        }
 
         $db = $this->db();
         $db->transStart();
-
-        // Hapus semua link existing parent → isi ulang
-        $db->table('user_links')->where('parent_user_id', $parentId)->delete();
-
-        // Insert baru
+        $db->table('user_links')->where('parent_user_id',$parentId)->delete();
         foreach ($childIds as $cid) {
-            // opsional: cegah child yang superadmin juga → masih boleh, tapi tidak switch ke parent tanpa password nanti
-            $db->table('user_links')->insert([
-                'parent_user_id' => $parentId,
-                'child_user_id'  => $cid,
-            ]);
+            $db->table('user_links')->insert(['parent_user_id'=>$parentId,'child_user_id'=>$cid]);
         }
-
         $db->transComplete();
-        if (!$db->transStatus()) {
-            return redirect()->to('/users')->with('error','Gagal menyimpan link.');
-        }
 
+        if (!$db->transStatus()) return redirect()->to('/users')->with('error','Gagal menyimpan link.');
         return redirect()->to('/users')->with('message','Link tersimpan.');
     }
 
-    /** Popup untuk navbar: list linked users (superadmin) + form switch ke parent (kalau lagi di child) */
+    /* ========= Switcher Popup ========= */
+
+    // GET /account-switcher
     public function switcherPopup()
     {
-        if (!session('isLoggedIn')) return redirect()->to('/login');
+        if ($r = $this->mustLogged()) return $r;
 
-        $userId = (int) session('user_id');
+        $userId = (int)session('user_id');
         $role   = session('role') ?? 'user';
+        $um     = new UserModel();
+        $me     = $um->find($userId);
+        $csrf   = csrf_hash();
 
-        $um  = new UserModel();
-        $me  = $um->find($userId);
-
-        $db  = $this->db();
-
-        $linkedUsers = [];
-        $parentOfMe  = null;
+        $db = $this->db();
 
         if ($role === 'superadmin') {
-            // superadmin: ambil child linked
-            $rows = $db->table('user_links ul')
-                ->select('u.*')
-                ->join('users u', 'u.id = ul.child_user_id')
-                ->where('ul.parent_user_id', $userId)
-                ->orderBy('u.username')
-                ->get()->getResultArray();
-            $linkedUsers = $rows;
-        } else {
-            // user biasa/admin: cek apakah dia child dari parent mana
-            $row = $db->table('user_links ul')
-                ->select('p.*')
-                ->join('users p', 'p.id = ul.parent_user_id')
-                ->where('ul.child_user_id', $userId)
-                ->get()->getFirstRow('array');
-            if ($row) $parentOfMe = $row;
-        }
+            // anak-anak dari superadmin yang login
+            $rows = $db->table('user_links ul')->select('u.*')
+                ->join('users u','u.id = ul.child_user_id')
+                ->where('ul.parent_user_id',$userId)
+                ->orderBy('u.username')->get()->getResultArray();
 
-        $csrf = csrf_hash();
-        $html = $this->renderSwitcher($me, $role, $linkedUsers, $parentOfMe, $csrf);
-        return $this->response->setStatusCode(200)->setBody($html);
+            return $this->response->setBody($this->renderSwitcherSuper($me,$rows,$csrf));
+        } else {
+            // semua parent superadmin dari user ini (bisa lebih dari 1)
+            $rows = $db->table('user_links ul')->select('p.*')
+                ->join('users p','p.id = ul.parent_user_id')
+                ->where('ul.child_user_id',$userId)
+                ->where('p.role','superadmin')
+                ->orderBy('p.username')->get()->getResultArray();
+
+            return $this->response->setBody($this->renderSwitcherUser($me,$rows,$csrf));
+        }
     }
 
-    /** Render HTML popup floating (dipanggil via fetch dan disisipkan ke navbar) */
-    private function renderSwitcher(array $me, string $role, array $linkedUsers, ?array $parent, string $csrf): string
+    private function renderSwitcherSuper(array $me,array $linked,string $csrf): string
     {
-        $meU = esc($me['username'] ?? 'user');
-        ob_start(); ?>
-<div id="acc-switcher" style="position:fixed;top:70px;right:20px;z-index:9999;display:block">
+        $meU = esc($me['username']??'user'); ob_start(); ?>
+<div id="acc-switcher" style="position:fixed;top:70px;right:20px;z-index:9999">
   <div style="background:#0f172a;border:1px solid #1f2937;border-radius:16px;min-width:320px;max-width:420px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.4)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
-      <div><strong>Signed in:</strong> <?= $meU ?> <span style="opacity:.6">[<?= esc($role) ?>]</span></div>
+      <div><strong>Signed in:</strong> <?= $meU ?> <span style="opacity:.6">[superadmin]</span></div>
       <button onclick="document.getElementById('acc-switcher').remove()" style="background:#111827;border:1px solid #374151;border-radius:10px;color:#e5e7eb;padding:6px 10px;cursor:pointer">Close</button>
     </div>
 
-    <?php if ($role === 'superadmin'): ?>
-      <div style="font-size:12px;opacity:.8;margin:6px 0 8px">Linked users:</div>
-      <?php if (empty($linkedUsers)): ?>
-        <div style="opacity:.8">Belum ada linked user. Buka <code>/users</code> → “Link Accounts”.</div>
-      <?php else: ?>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <?php foreach ($linkedUsers as $u):
-              $id = (int)$u['id']; $uu = esc($u['username']); $nm = esc($u['full_name'] ?? '');
-              $rl = esc($u['role'] ?? 'user'); $au = esc($u['auth_source'] ?? 'local'); ?>
-            <form method="post" action="/switch-as/<?= $id ?>" onsubmit="return confirm('Switch ke <?= $uu ?>?')">
-              <input type="hidden" name="<?= csrf_token() ?>" value="<?= $csrf ?>">
-              <button type="submit" style="width:100%;text-align:left;padding:10px;border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb;cursor:pointer">
-                <div><strong><?= $uu ?></strong> <span style="opacity:.7">[<?= $rl ?> · <?= strtoupper($au) ?>]</span></div>
-                <?php if ($nm !== ''): ?><div style="font-size:12px;opacity:.8"><?= $nm ?></div><?php endif; ?>
-              </button>
-            </form>
-          <?php endforeach; ?>
-        </div>
-      <?php endif; ?>
+    <div style="font-size:12px;opacity:.8;margin:6px 0 8px">Linked users:</div>
+    <?php if (empty($linked)): ?>
+      <div style="opacity:.8">none</div>
     <?php else: ?>
-      <?php if ($parent): ?>
-        <div style="opacity:.9;margin-bottom:8px">Switch ke parent:</div>
-        <form method="post" action="/switch-to-parent" onsubmit="return confirm('Switch ke parent (<?= esc($parent['username']) ?>)?')">
-          <input type="hidden" name="<?= csrf_token() ?>" value="<?= $csrf ?>">
-          <input type="hidden" name="parent_username" value="<?= esc($parent['username']) ?>">
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <input name="password" type="password" placeholder="Password parent" style="padding:10px;border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb" required>
-            <button type="submit" style="padding:10px;border-radius:10px;border:1px solid #7c3aed;background:#7c3aed;color:#0b1020;font-weight:700;cursor:pointer">Switch to <?= esc($parent['username']) ?></button>
-          </div>
-        </form>
-      <?php else: ?>
-        <div style="opacity:.8">Tidak ada parent untuk akun ini.</div>
-      <?php endif; ?>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <?php foreach ($linked as $u):
+          $id=(int)$u['id']; $uu=esc($u['username']); $nm=esc($u['full_name']??''); ?>
+          <form method="post" action="/switch-as/<?= $id ?>" onsubmit="return confirm('Switch ke <?= $uu ?>?')">
+            <input type="hidden" name="<?= csrf_token() ?>" value="<?= $csrf ?>">
+            <button type="submit" style="width:100%;text-align:left;padding:10px;border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb;cursor:pointer">
+              <div><strong><?= $uu ?></strong></div>
+              <?php if ($nm!==''): ?><div style="font-size:12px;opacity:.8"><?= $nm ?></div><?php endif; ?>
+            </button>
+          </form>
+        <?php endforeach; ?>
+      </div>
     <?php endif; ?>
   </div>
 </div>
-<script>
-// no-op: popup sudah siap
-</script>
-<?php
-        return ob_get_clean();
-    }
+<?php return ob_get_clean(); }
 
-    /** Action: Superadmin → switch jadi child tanpa password */
-    public function switchAs($childId = null)
+    private function renderSwitcherUser(array $me,array $parents,string $csrf): string
     {
-        if (!session('isLoggedIn')) return redirect()->to('/login');
-        $role = session('role') ?? 'user';
-        if ($role !== 'superadmin') return redirect()->to('/dashboard');
+        $meU = esc($me['username']??'user'); ob_start(); ?>
+<div id="acc-switcher" style="position:fixed;top:70px;right:20px;z-index:9999">
+  <div style="background:#0f172a;border:1px solid #1f2937;border-radius:16px;min-width:320px;max-width:420px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.4)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
+      <div><strong>Signed in:</strong> <?= $meU ?> <span style="opacity:.6">[user]</span></div>
+      <button onclick="document.getElementById('acc-switcher').remove()" style="background:#111827;border:1px solid #374151;border-radius:10px;color:#e5e7eb;padding:6px 10px;cursor:pointer">Close</button>
+    </div>
 
-        $parentId = (int) session('user_id');
-        $childId  = (int) $childId;
+    <div style="font-size:12px;opacity:.8;margin:6px 0 8px">Switch to parent:</div>
+    <?php if (empty($parents)): ?>
+      <div style="opacity:.8">none</div>
+    <?php else: ?>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <?php foreach ($parents as $p):
+          $u=esc($p['username']); ?>
+        <form method="post" action="/switch-to-parent">
+          <input type="hidden" name="<?= csrf_token() ?>" value="<?= $csrf ?>">
+          <input type="hidden" name="parent_username" value="<?= $u ?>">
+          <div style="display:flex;gap:8px;align-items:center">
+            <div style="flex:1 1 auto">
+              <div><strong><?= $u ?></strong></div>
+              <input name="password" type="password" placeholder="Password parent" style="width:100%;margin-top:6px;padding:8px;border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb" required>
+            </div>
+            <div>
+              <button type="submit" style="padding:10px 12px;border-radius:10px;border:1px solid #7c3aed;background:#7c3aed;color:#0b1020;font-weight:700;cursor:pointer">Switch</button>
+            </div>
+          </div>
+        </form>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+  </div>
+</div>
+<?php return ob_get_clean(); }
 
-        if ($childId <= 0) return redirect()->to('/dashboard');
+    /* ========= Switch Actions ========= */
 
-        if (!$this->isLinked($parentId, $childId)) {
+    // POST /switch-as/{childId}
+    public function switchAs($childId=null)
+    {
+        if ($r = $this->mustSuperadmin()) return $r;
+
+        $parentId = (int)session('user_id');
+        $childId  = (int)$childId;
+        if ($childId<=0) return redirect()->to('/dashboard');
+
+        if (!$this->isLinked($parentId,$childId)) {
             return redirect()->to('/dashboard')->with('error','User tidak ter-link.');
         }
 
-        $um    = new UserModel();
+        $um = new UserModel();
         $child = $um->find($childId);
-        if (!$child || (int)$child['is_active'] !== 1) {
-            return redirect()->to('/dashboard')->with('error','Child user tidak aktif.');
+        if (!$child || (int)$child['is_active']!==1 || ($child['role']??'user')!=='user') {
+            return redirect()->to('/dashboard')->with('error','Child invalid.');
         }
 
-        // Simpan jejak impersonator untuk bisa revert
-        $payload = [
-            'isLoggedIn'     => true,
-            'user_id'        => (int) $child['id'],
-            'id'             => (int) $child['id'],
-            'uid'            => $child['username'],
-            'username'       => $child['username'],
-            'name'           => $child['full_name'] ?? $child['username'],
-            'role'           => $child['role'] ?? 'user',
-            'auth'           => $child['auth_source'] ?? 'local',
-            'impersonator_id'=> $parentId, // penting
-        ];
-        session()->set($payload);
-
-        // sentuh last_login_at child (opsional)
-        $um->update($child['id'], ['last_login_at' => date('Y-m-d H:i:s')]);
+        session()->set([
+            'isLoggedIn'=>true,
+            'user_id'=>(int)$child['id'],
+            'id'=>(int)$child['id'],
+            'uid'=>$child['username'],
+            'username'=>$child['username'],
+            'name'=>$child['full_name'] ?? $child['username'],
+            'role'=>$child['role'] ?? 'user',
+            'auth'=>$child['auth_source'] ?? 'local',
+            'impersonator_id'=>$parentId,
+        ]);
+        $um->update($child['id'], ['last_login_at'=>date('Y-m-d H:i:s')]);
 
         return redirect()->to('/dashboard')->with('message','Switched as '.$child['username']);
     }
 
-    /**
-     * Action: Child → switch ke parent (WAJIB password parent)
-     * - Autentikasi parent via local (password_verify) atau LDAP (Ldap_lib)
-     */
+    // POST /switch-to-parent
     public function switchToParent()
     {
-        if (!session('isLoggedIn')) return redirect()->to('/login');
+        if ($r = $this->mustLogged()) return $r;
 
         $parentUsername = trim((string)$this->request->getPost('parent_username'));
         $password       = (string)$this->request->getPost('password');
-        if ($parentUsername === '' || $password === '') {
+        if ($parentUsername==='' || $password==='') {
             return redirect()->to('/dashboard')->with('error','Username/Password parent wajib.');
         }
 
         $um = new UserModel();
-        $p  = $um->where('username', $parentUsername)->first();
-        if (!$p) return redirect()->to('/dashboard')->with('error','Parent tidak ditemukan.');
-
-        if (($p['role'] ?? 'user') !== 'superadmin' || (int)$p['is_active'] !== 1) {
-            return redirect()->to('/dashboard')->with('error','Parent bukan superadmin / nonaktif.');
+        $p  = $um->where('username',$parentUsername)->first();
+        if (!$p || ($p['role']??'user')!=='superadmin' || (int)$p['is_active']!==1) {
+            return redirect()->to('/dashboard')->with('error','Parent invalid.');
         }
 
-        $authed = false;
-        // Coba local:
-        if (!empty($p['password_hash']) && password_verify($password, $p['password_hash'])) {
-            $authed = true;
-        } else {
-            // Coba LDAP:
-            try {
-                $ldap = new Ldap_lib();
-                $info = $ldap->login($parentUsername, $password);
-                $authed = ($info !== false);
-            } catch (\Throwable $e) {
-                $authed = false;
-            }
+        $ok = false;
+        if (!empty($p['password_hash']) && password_verify($password,$p['password_hash'])) $ok=true;
+        if (!$ok) {
+            try { $ldap = new Ldap_lib(); $ok = ($ldap->login($parentUsername,$password)!==false); }
+            catch (\Throwable $e) { $ok=false; }
         }
+        if (!$ok) return redirect()->to('/dashboard')->with('error','Password parent salah.');
 
-        if (!$authed) {
-            return redirect()->to('/dashboard')->with('error','Password parent salah.');
-        }
-
-        // Set session jadi parent, hapus impersonator_id
-        $payload = [
-            'isLoggedIn'     => true,
-            'user_id'        => (int) $p['id'],
-            'id'             => (int) $p['id'],
-            'uid'            => $p['username'],
-            'username'       => $p['username'],
-            'name'           => $p['full_name'] ?? $p['username'],
-            'role'           => $p['role'] ?? 'superadmin',
-            'auth'           => $p['auth_source'] ?? 'local',
-            'impersonator_id'=> null,
-        ];
-        session()->set($payload);
-
-        // sentuh last_login_at parent (opsional)
-        $um->update($p['id'], ['last_login_at' => date('Y-m-d H:i:s')]);
+        session()->set([
+            'isLoggedIn'=>true,
+            'user_id'=>(int)$p['id'],
+            'id'=>(int)$p['id'],
+            'uid'=>$p['username'],
+            'username'=>$p['username'],
+            'name'=>$p['full_name'] ?? $p['username'],
+            'role'=>$p['role'] ?? 'superadmin',
+            'auth'=>$p['auth_source'] ?? 'local',
+            'impersonator_id'=>null,
+        ]);
+        $um->update($p['id'], ['last_login_at'=>date('Y-m-d H:i:s')]);
 
         return redirect()->to('/dashboard')->with('message','Switched to parent '.$p['username']);
     }
