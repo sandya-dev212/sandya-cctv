@@ -4,6 +4,10 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use CodeIgniter\Database\BaseConnection;
+use App\Models\NvrModel;
+use App\Models\DashboardModel;
+use App\Models\DashboardMonitorModel;
+use App\Libraries\Shinobi;
 
 class Dashboards extends BaseController
 {
@@ -41,9 +45,9 @@ class Dashboards extends BaseController
                 ->whereIn('ud.dashboard_id', $ids)
                 ->orderBy('u.username')
                 ->get()->getResultArray();
-            foreach ($rows as $r) {
-                $assigns[$r['dashboard_id']][] = $r['username'];
-            }
+                foreach ($rows as $r) {
+                    $assigns[$r['dashboard_id']][] = $r['username'];
+                }
         }
 
         return view('layout/main', [
@@ -60,6 +64,31 @@ class Dashboards extends BaseController
     {
         if ($r = $this->mustAdmin()) return $r;
 
+        $nvrModel = new NvrModel();
+        $nvrs     = $nvrModel->where('is_active', 1)->orderBy('name')->findAll();
+
+        $nvrId  = (int)($this->request->getGet('nvr_id') ?? ($nvrs[0]['id'] ?? 0));
+        $active = $nvrId ? $nvrModel->find($nvrId) : null;
+
+        $dModel = new DashboardModel();
+        $dashboards = $dModel->orderBy('name')->findAll();
+        $dashboardActiveId = (int)($this->request->getGet('dashboard_id') ?? ($dashboards[0]['id'] ?? 0));
+
+        $dashboardMonitor = new DashboardMonitorModel();
+
+        // Ambil monitors dari Shinobi
+        $streams = ['ok'=>false, 'items'=>[],'msg'=>''];
+        if ($active) {
+            $cli = new Shinobi();
+            $res = $cli->getMonitors($active['base_url'], $active['api_key'], $active['group_key']);
+            if ($res['ok'] && is_array($res['data'])) {
+                $items = $cli->normalizeMonitors($res['data']);
+                $streams = ['ok'=>true, 'items'=>$items, 'msg'=>''];
+            } else {
+                $streams = ['ok'=>false, 'items'=>[], 'msg'=>('Shinobi error: ' . ($res['error'] ?? ('HTTP '.$res['code'])))];
+            }
+        }
+
         $users = $this->db->table('users')
             ->select('id, username, full_name, role')
             ->where('is_active', 1)
@@ -71,9 +100,15 @@ class Dashboards extends BaseController
             'content' => view('dashboards/form', [
                 'action' => '/dashboards',
                 'method' => 'post',
-                'data'   => ['name' => ''],
+                'data'   => ['name' => '', 'id' => 0],
                 'users'  => $users,
                 'selected' => [],
+                'nvrs'              => $nvrs,
+                'nvrActive'         => $active,
+                'streams'           => $streams,
+                'dashboards'        => $dashboards,
+                'dashboardActiveId' => $dashboardActiveId,
+                'assigned'          => [],
             ]),
         ]);
     }
@@ -113,17 +148,43 @@ class Dashboards extends BaseController
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
+        
         $dashId = (int)$this->db->insertID();
 
         $this->syncAssignments($dashId, $sel);
 
-        return redirect()->to('/dashboards');
+        return redirect()->to('/dashboards/' . $dashId . '/edit');
     }
 
     /** EDIT form */
     public function edit($id)
     {
         if ($r = $this->mustAdmin()) return $r;
+
+        $nvrModel = new NvrModel();
+        $nvrs     = $nvrModel->where('is_active', 1)->orderBy('name')->findAll();
+
+        $nvrId  = (int)($this->request->getGet('nvr_id') ?? ($nvrs[0]['id'] ?? 0));
+        $active = $nvrId ? $nvrModel->find($nvrId) : null;
+
+        $dModel = new DashboardModel();
+        $dashboards = $dModel->orderBy('name')->findAll();
+        $dashboardActiveId = (int)($this->request->getGet('dashboard_id') ?? ($dashboards[0]['id'] ?? 0));
+
+        $dashboardMonitor = new DashboardMonitorModel();
+
+        // Ambil monitors dari Shinobi
+        $streams = ['ok'=>false, 'items'=>[],'msg'=>''];
+        if ($active) {
+            $cli = new Shinobi();
+            $res = $cli->getMonitors($active['base_url'], $active['api_key'], $active['group_key']);
+            if ($res['ok'] && is_array($res['data'])) {
+                $items = $cli->normalizeMonitors($res['data']);
+                $streams = ['ok'=>true, 'items'=>$items, 'msg'=>''];
+            } else {
+                $streams = ['ok'=>false, 'items'=>[], 'msg'=>('Shinobi error: ' . ($res['error'] ?? ('HTTP '.$res['code'])))];
+            }
+        }
 
         $dash = $this->db->table('dashboards')->where('id', (int)$id)->get()->getRowArray();
         if (!$dash) return redirect()->to('/dashboards');
@@ -138,7 +199,20 @@ class Dashboards extends BaseController
             ->select('user_id')
             ->where('dashboard_id', (int)$id)
             ->get()->getResultArray();
+
         $selected = array_map('intval', array_column($selected, 'user_id'));
+
+        // buat set ID mapping yg sudah assigned untuk dashboard terpilih
+        $assigned = [];
+        if (!empty($streams['items']) && !empty($dashboards)) {
+
+            $dashId = $dashboards[0]['id'] ?? 0;
+
+            $assigned = $dashboardMonitor->select('id, monitor_id')
+            ->where('dashboard_id', $id)
+            ->where('nvr_id', $active['id'] ?? 0)
+            ->get()->getResultArray();
+        }
 
         return view('layout/main', [
             'title'   => 'Edit Dashboard',
@@ -148,6 +222,12 @@ class Dashboards extends BaseController
                 'data'     => $dash,
                 'users'    => $users,
                 'selected' => $selected,
+                'nvrs'              => $nvrs,
+                'nvrActive'         => $active,
+                'streams'           => $streams,
+                'dashboards'        => $dashboards,
+                'dashboardActiveId' => $dashboardActiveId,
+                'assigned'          => $assigned,
             ]),
         ]);
     }
@@ -157,32 +237,11 @@ class Dashboards extends BaseController
     {
         if ($r = $this->mustAdmin()) return $r;
 
-        $id   = (int) $id;
-        $name = trim((string) $this->request->getPost('name'));
-        $sel  = (array)($this->request->getPost('user_ids') ?? []);
+        $name = trim($this->request->getPost('name'));
+        $user_id  = $this->request->getPost('user_id');
 
         if ($name === '') {
             return redirect()->back()->with('error','Nama wajib diisi');
-        }
-
-        // ENFORCE saat update juga: user role 'user' maksimal 1 dashboard
-        if ($sel) {
-            $users   = $this->db->table('users')->select('id, role')->whereIn('id', $sel)->get()->getResultArray();
-            $userIds = array_map(fn($r)=>(int)$r['id'], array_filter($users, fn($r)=>($r['role'] ?? 'user') === 'user'));
-            if ($userIds) {
-                // hitung kepemilikan selain dashboard ini
-                $counts = $this->db->table('user_dashboards')
-                    ->select('user_id, COUNT(*) AS c')
-                    ->whereIn('user_id', $userIds)
-                    ->where('dashboard_id !=', $id)
-                    ->groupBy('user_id')
-                    ->get()->getResultArray();
-                foreach ($counts as $row) {
-                    if ((int)$row['c'] >= 1) {
-                        return redirect()->back()->with('error', 'Setiap user biasa hanya boleh 1 dashboard. User ID: '.$row['user_id']);
-                    }
-                }
-            }
         }
 
         $this->db->table('dashboards')->where('id', $id)->update([
@@ -190,9 +249,14 @@ class Dashboards extends BaseController
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $this->syncAssignments($id, $sel);
+        if ($user_id != "") {
+            $this->db->table('user_dashboards')->insert([
+                "user_id" => $user_id,
+                "dashboard_id" => $id
+            ]);
+        }
 
-        return redirect()->to('/dashboards');
+        return redirect()->back()->with('success', 'Sukses tambah user');
     }
 
     /** DELETE */
@@ -207,6 +271,18 @@ class Dashboards extends BaseController
         $this->db->table('dashboards')->where('id', $id)->delete();
 
         return redirect()->to('/dashboards');
+    }
+
+    public function deleteAccess($dashboard_id) {
+        
+        $user_id = $this->request->getPost('user_id');
+
+        $this->db->table('user_dashboards')
+            ->where('dashboard_id', $dashboard_id)
+            ->where('user_id', $user_id)
+            ->delete();
+
+        return redirect()->back()->with('success', 'Sukses hapus user');
     }
 
     /** view isi dashboard (opsional) */
@@ -237,7 +313,6 @@ class Dashboards extends BaseController
 
         $inserts = [];
         foreach ($userIds as $uid) {
-            $uid = (int)$uid;
             if ($uid > 0) {
                 $inserts[] = [
                     'user_id'      => $uid,
