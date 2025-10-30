@@ -196,6 +196,7 @@ q?.addEventListener('input',()=>{const s=q.value.toLowerCase();
         // and set selectedId also his id
         if ($role == 'superadmin') {
           session()->set('parentId', $userId);
+          session()->set('parentUsername', $me['username']);
           $selectedId = $userId;
         }
 
