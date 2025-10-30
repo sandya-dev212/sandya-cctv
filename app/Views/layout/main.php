@@ -13,7 +13,16 @@
 
   <!-- App assets -->
   <link href="/assets/app.css" rel="stylesheet">
+  <link href="/assets/css/main.css" rel="stylesheet">
+  <link href="/assets/css/output.css" rel="stylesheet">
+
   <script defer src="/assets/app.js"></script>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/gridstack@9.2.2/dist/gridstack.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/gridstack@9.2.2/dist/gridstack-all.min.js"></script>
+
 </head>
 <body>
   <?= view('partials/navbar') ?>
@@ -26,5 +35,19 @@
   <div id="spinner" class="spinner hidden">
     <div class="loader"></div>
   </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      GridStack.init({
+        column: 12,
+        cellHeight: 100,
+        float: false,
+        resizeToContent: true,
+        resizable: {
+          handles: 'all'
+        }
+      }).compact();
+    });
+  </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
   <a class="btn" href="/nvrs/new">Add NVR</a>
 </section>
 
-<?php if (empty($items)): ?>
+<?php if (empty($data)): ?>
   <p style="color:#94a3b8">Belum ada NVR.</p>
 <?php else: ?>
   <table style="width:100%;border-collapse:collapse">
@@ -13,19 +13,19 @@
         <th align="left">Base URL</th>
         <th align="right">Total Camera(s)</th>
         <th align="center">Active</th>
-        <th>Aksi</th>
+        <th align="center">Aksi</th>
       </tr>
     </thead>
     <tbody>
-      <?php foreach ($items as $it): ?>
+      <?php foreach ($data as $item): ?>
       <tr style="border-top:1px solid #1f2937">
-        <td><?= esc($it['name']) ?></td>
-        <td><?= esc($it['base_url']) ?></td>
-        <td align="right"><?= (int)($totals[$it['id']] ?? 0) ?></td>
-        <td align="center"><?= (int)$it['is_active'] ? '✔' : '—' ?></td>
-        <td>
-          <a class="btn ghost" href="/nvrs/<?= (int)$it['id'] ?>/edit">Edit</a>
-          <form style="display:inline" method="post" action="/nvrs/<?= (int)$it['id'] ?>/delete" onsubmit="return confirm('Delete NVR?')">
+        <td><?= esc($item['name']) ?></td>
+        <td><?= esc($item['base_url']) ?></td>
+        <td align="right"><?= (int)($totals[$item['id']] ?? 0) ?></td>
+        <td align="center"><?= (int)$item['is_active'] ? '✔' : '—' ?></td>
+        <td align="center">
+          <a class="btn ghost" href="/nvrs/<?= (int)$item['id'] ?>/edit">Edit</a>
+          <form style="display:inline" method="post" action="/nvrs/<?= (int)$item['id'] ?>/delete" onsubmit="return confirm('Delete NVR?')">
             <button class="btn" type="submit" style="background:#ef4444">Delete</button>
           </form>
         </td>

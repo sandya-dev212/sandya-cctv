@@ -1,9 +1,10 @@
-<section class="page-head" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-  <h1 style="margin-right:auto">Cameras</h1>
+<section class="flex flex-col justify-start">
+  <p class="text-3xl font-bold text-white">Cameras</p>
 
   <!-- pilih NVR -->
-  <form method="get" action="/cameras" style="display:flex;gap:8px;align-items:center">
-    <select name="nvr_id" onchange="this.form.submit()">
+  <form method="get" action="/cameras" class="flex flex-col justify-start gap-3 mt-10 mb-5 w-max">
+    <p class="font-bold text-white">NVR URL</p>
+    <select name="nvr_id" onchange="this.form.submit()" class="w-full bg-slate-800 p-2 rounded-md hover:cursor-pointer">
       <?php foreach ($nvrs as $n): ?>
         <option value="<?= (int)$n['id'] ?>" <?= ($nvrActive && $nvrActive['id']===$n['id'])?'selected':'' ?>>
           <?= esc($n['name']) ?> (<?= esc($n['base_url']) ?>)
@@ -12,69 +13,49 @@
     </select>
   </form>
 
-  <!-- pilih Dashboard untuk assign/mappings -->
-  <div style="display:flex;gap:8px;align-items:center">
-    <select id="selDash" style="min-width:220px">
-      <?php foreach ($dashboards as $d): ?>
-        <option value="<?= (int)$d['id'] ?>"><?= esc($d['name']) ?></option>
-      <?php endforeach; ?>
-    </select>
-    <a class="btn ghost" href="#" id="btnMappings">Mappings</a>
-  </div>
 </section>
 
-<?php
-// buat set ID mapping yg sudah assigned untuk dashboard terpilih
-$assigned = [];
-if (!empty($streams['items']) && !empty($dashboards)) {
-  $db = db_connect();
-  $dashId = (int)($dashboards[0]['id'] ?? 0);
-  $q = $db->table('dashboard_monitors')
-          ->select('monitor_id')
-          ->where('dashboard_id', $dashId)
-          ->where('nvr_id', (int)($nvrActive['id'] ?? 0))
-          ->get()->getResultArray();
-  foreach ($q as $r) $assigned[$r['monitor_id']] = true;
-}
-?>
-
-<?php if (!$nvrActive): ?>
-  <p class="muted" style="text-align:center">Belum ada NVR aktif.</p>
-<?php else: ?>
-  <?php if (!$streams['ok'] || empty($streams['items'])): ?>
-    <p class="muted" style="text-align:center"><?= esc($streams['msg'] ?: 'Tidak ada monitor / Shinobi error.') ?></p>
+  <p class="font-bold text-white mb-2">Camera List</p>
+  <?php if (!$nvrActive): ?>
+    <p class="muted" style="text-align:center">Belum ada NVR aktif.</p>
   <?php else: ?>
-    <style>
-      .cam-list{max-width:1100px;margin:0 auto}
-      .cam-row{display:grid;grid-template-columns: 1fr 2fr auto;gap:12px;align-items:center;padding:12px 14px;border:1px solid #1f2937;background:#0f1420;border-radius:12px;margin-bottom:10px}
-      .cam-id{font-weight:700}
-      .cam-name{color:#cbd5e1}
-      .cam-row .btn{min-width:170px}
-      @media (max-width: 720px){
-        .cam-row{grid-template-columns: 1fr;gap:8px}
-        .cam-row .btn{width:100%}
-      }
-    </style>
-    <div class="cam-list">
-      <?php foreach ($streams['items'] as $m): ?>
-        <?php $isAssigned = !empty($assigned[$m['mid']]); ?>
-        <div class="cam-row">
-          <div class="cam-id">— <?= esc($m['mid']) ?></div>
-          <div class="cam-name"><?= esc($m['name']) ?></div>
-          <div>
-            <button
-              class="btn ghost assign-btn"
-              data-mid="<?= esc($m['mid']) ?>"
-              data-nvr="<?= (int)$nvrActive['id'] ?>"
-              <?= $isAssigned ? 'disabled' : '' ?>
-              style="<?= $isAssigned ? 'background:#ef4444;color:#fff' : '' ?>"
-            ><?= $isAssigned ? 'Assigned' : 'Assign to Dashboard' ?></button>
+    <?php if (!$streams['ok'] || empty($streams['items'])): ?>
+      <p class="muted" style="text-align:center"><?= esc($streams['msg'] ?: 'Tidak ada monitor / Shinobi error.') ?></p>
+    <?php else: ?>
+      <div class="cam-list">
+        <?php foreach ($streams['items'] as $m): ?>
+          
+          <?php $isAssignedSet = in_array($m['mid'], array_column($assignedBy, 'monitor_id')); ?>
+
+          <div class="flex flex-col mb-5">
+            <div class="flex flex-row gap-3 border-2 border-[#1f2937] p-2 rounded-tr-md rounded-tl-md">
+              <p class="font-bold"><?= esc($m['mid']) ?></p>
+              <p><?= esc($m['name']) ?></p>
+            </div>
+            <?php $found = array_values(array_filter($assignedBy, fn($r) => $r['monitor_id'] === $m['mid'])); ?>
+            <?php if ($isAssignedSet): ?>
+              <div class="bg-[#1f2937] p-2 rounded-br-md rounded-bl-md">
+                <p class="font-semibold mb-1">Available at (dashboard name):</p>
+                <div class="flex flex-row gap-2 items-center">
+                  <?php foreach ($found as $f): ?>
+                    <p class="bg-violet-400/50 rounded-full py-1 px-2 w-max"><?= $f['name'] ?></p>
+                  <?php endforeach; ?>
+                </div>
+              </div>
+            <?php endif; ?>
           </div>
-        </div>
-      <?php endforeach; ?>
-    </div>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
   <?php endif; ?>
-<?php endif; ?>
+
+<style>
+  .cam-row{display:grid;grid-template-columns: 1fr 2fr auto;gap:12px;align-items:center;padding:12px 14px;border:1px solid #1f2937;background:#0f1420;border-radius:12px;margin-bottom:10px}
+  @media (max-width: 720px){
+    .cam-row{grid-template-columns: 1fr;gap:8px}
+    .cam-row .btn{width:100%}
+  }
+</style>
 
 <script>
 const selDash = document.getElementById('selDash');

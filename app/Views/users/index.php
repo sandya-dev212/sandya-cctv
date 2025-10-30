@@ -3,16 +3,16 @@
   <a class="btn" href="/users/new">Add Local User</a>
 </section>
 
-<table class="table">
+<table class="table-auto border-collapse w-full">
   <thead>
     <tr>
-      <th>Username</th>
-      <th>Full Name</th>
-      <th>Email</th>
-      <th>Auth</th>
-      <th>Role</th>
-      <th>Active</th>
-      <th>Aksi</th>
+      <th align="start">Username</th>
+      <th align="start">Full Name</th>
+      <th align="start">Email</th>
+      <th align="start">Auth</th>
+      <th align="start">Role</th>
+      <th align="center">Active</th>
+      <th align="center">Aksi</th>
     </tr>
   </thead>
   <tbody>
@@ -38,7 +38,7 @@
       // Hanya superadmin yang bisa jadi parent untuk Link Accounts
       $isParent = (($u['role'] ?? 'user') === 'superadmin');
     ?>
-    <tr>
+    <tr class="border-t border-slate-500 p-3">
       <td><?= esc($u['username']) ?></td>
       <td><?= esc($u['full_name']) ?></td>
       <td><?= esc($u['email']) ?></td>
@@ -47,8 +47,8 @@
         <span style="margin-left:6px;color:#94a3b8"><?= esc($authRaw) !== $authLabel ? esc(strtoupper($authRaw)) : '' ?></span>
       </td>
       <td><?= esc($u['role']) ?></td>
-      <td><?= ((int)$u['is_active']===1)?'✓':'—' ?></td>
-      <td style="display:flex;gap:8px;align-items:center">
+      <td align="center"><?= ((int)$u['is_active']===1)?'✓':'—' ?></td>
+      <td class="flex items-center justify-center gap-3">
         <?php if ($isParent): ?>
           <!-- Parent superadmin: tombol aktif (menuju UI checklist link) -->
           <a class="btn" style="background:#22c55e" href="/users/link/<?= (int)$u['id'] ?>">Link Accounts</a>

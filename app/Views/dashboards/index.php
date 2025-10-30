@@ -6,30 +6,33 @@
 <?php if (empty($items)): ?>
   <p class="muted">Belum ada dashboard.</p>
 <?php else: ?>
-  <table class="table">
+  <table class="table-auto border-collapse w-full">
     <thead>
-      <tr>
-        <th style="width:260px; text-align:center">Nama Dashboard</th>
-        <th style="text-align:center">Users</th>
-        <th style="width:260px; text-align:center">Aksi</th>
+      <tr align="left" class="p-3">
+        <th align="left">Nama Dashboard</th>
+        <th align="left">Users</th>
+        <th align="left">Aksi</th>
       </tr>
     </thead>
     <tbody>
       <?php foreach ($items as $d): ?>
-        <tr>
-          <td style="text-align:center"><?= esc($d['name']) ?></td>
-          <td style="text-align:center">
-            <?php
-              $list = $assigns[$d['id']] ?? [];
-              echo $list ? esc(implode(', ', $list)) : '&mdash;';
-            ?>
+        <tr class="border-t border-slate-600">
+          <td align="left"><?= esc($d['name']) ?></td>
+          <td align="left">
+              <?php
+                $list = $assigns[$d['id']] ?? [];
+                foreach($list as $name): 
+              ?>
+                <div class="inline-block font-bold my-1 py-1 px-2 bg-violet-400/50 rounded-full w-max"><?= $name ?></div>
+              <?php endforeach; ?>
           </td>
-          <td style="display:flex;gap:8px;justify-content:center">
-            <a class="btn ghost" href="/dashboards/<?= (int)$d['id'] ?>/edit">Edit</a>
-            <a class="btn ghost" href="/cameras/mappings?dashboard_id=<?= (int)$d['id'] ?>">Mappings</a>
-            <form method="post" action="/dashboards/<?= (int)$d['id'] ?>/delete" onsubmit="return confirm('Hapus dashboard ini?')">
-              <button class="btn" style="background:#ef4444">Delete</button>
-            </form>
+          <td>
+            <div class="flex flex-row gap-3">
+              <a class="btn ghost" href="/dashboards/<?= (int)$d['id'] ?>/edit">Edit</a>
+              <form method="post" action="/dashboards/<?= (int)$d['id'] ?>/delete" onsubmit="return confirm('Hapus dashboard ini?')">
+                <button class="btn" style="background:#ef4444">Delete</button>
+              </form>
+            </div>
           </td>
         </tr>
       <?php endforeach; ?>

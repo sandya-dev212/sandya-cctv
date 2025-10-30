@@ -16,18 +16,46 @@ class Dashboard extends BaseController
         $this->db = db_connect();
     }
 
-    public function index()
+    public function index($id)
     {
         if (!session('isLoggedIn')) {
             return redirect()->to('/login');
         }
 
-		$q       = trim((string) ($this->request->getGet('q') ?? ''));
-		$perPage = (int) ($this->request->getGet('per') ?? 5);
-		$perPage = in_array($perPage, [5, 10, 25, 50, 100], true) ? $perPage : 5;
-
         $role   = (string) (session('role') ?? 'user');
         $userId = (int) (session('user_id') ?? session('id') ?? 0);
+        $dashAccess = [];
+
+        // Check is the user has the access to the dashboard or not
+        $getUserDash = $this->db->table('user_dashboards')
+            ->where('user_id', $userId)
+            ->get()->getResultArray();
+
+        $dashAccess = $this->db->table('user_dashboards')
+            ->join('dashboards', 'user_dashboards.dashboard_id = dashboards.id')
+            ->select('user_dashboards.dashboard_id as id, dashboards.name as name')
+            ->where('user_id', $userId)
+            ->get()->getResultArray();
+
+        $dashIds = array_column($getUserDash, 'dashboard_id');
+
+        // This code is too redirect the button "Dashboard" in Views/partials/navbar.php
+        // Since the default href of the "Dashboard" button is 'dashboard/0'
+        // So, when user click the dashboard button in navbar, the user will be redirected to thers own dashboard
+        // This code is not affected the super admin user
+        if ($id == 0 && $role == 'user') {
+            return redirect()->to('/dashboard/' . $dashAccess[0]['id']);
+        }
+        
+        // This code is to prevent the user to opening the dashboard id that doesn't assigned to him by manually type the dashboard id in the URL path
+        if ($role == 'user' && !in_array($id, $dashIds)) {
+            session()->setFlashdata('message', 'Anda tidak memiliki akses ke dashboard dengan id ' . $id . '!');
+            return redirect()->back();
+        }
+
+		$q       = trim((string) ($this->request->getGet('q') ?? ''));
+		$perPage = (int) ($this->request->getGet('per') ?? 6);
+		$perPage = in_array($perPage, [6, 12, 24, 46, 100], true) ? $perPage : 6;
 
         $cards = [];
         $cli   = new Shinobi();
@@ -55,25 +83,18 @@ class Dashboard extends BaseController
                         'nvr_id'     => (int)$n['id'],
                         'monitor_id' => (string)$m['mid'],
                         'hls'        => $cli->hlsUrl($n['base_url'], $n['api_key'], $n['group_key'], (string)$m['mid']),
+                        'size'       => [ 'x' => 0, 'y' => 0, 'w' => 4, 'h' => 4]
                     ];
                 }
             }
         } else {
-            $dashIds = [];
-            if ($userId > 0) {
-                $dashRows = $this->db->table('user_dashboards')
-                    ->select('dashboard_id')
-                    ->where('user_id', $userId)
-                    ->get()->getResultArray();
-                $dashIds = array_map(fn($r) => (int)$r['dashboard_id'], $dashRows);
-            }
 
-            if ($dashIds) {
+            if ($dashAccess) {
                 $rows = $this->db->table('dashboard_monitors dm')
                     ->select('dm.id, dm.dashboard_id, dm.nvr_id, dm.monitor_id, dm.alias, dm.sort_order,
                               n.name AS nvr_name, n.base_url, n.api_key, n.group_key')
                     ->join('nvrs n', 'n.id = dm.nvr_id', 'inner')
-                    ->whereIn('dm.dashboard_id', $dashIds)
+                    ->where('dm.dashboard_id', $id)
                     ->orderBy('dm.sort_order', 'ASC')
                     ->get()->getResultArray();
 
@@ -90,6 +111,7 @@ class Dashboard extends BaseController
                         'nvr_id'     => (int)$r['nvr_id'],
                         'monitor_id' => (string)$r['monitor_id'],
                         'hls'        => $cli->hlsUrl($r['base_url'], $r['api_key'], $r['group_key'], (string)$r['monitor_id']),
+                        'size'       => [ 'x' => 0, 'y' => 0, 'w' => 4, 'h' => 4]
                     ];
                 }
             }
@@ -109,6 +131,8 @@ class Dashboard extends BaseController
                 'page'  => $page,
                 'per'   => $perPage,
                 'q'     => $q,
+                'curDashId' => $id,
+                'dashAccess' => $dashAccess
             ]),
         ]);
     }

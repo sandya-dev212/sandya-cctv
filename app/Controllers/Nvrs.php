@@ -48,7 +48,7 @@ class Nvrs extends BaseController
 
         return view('layout/main', [
             'title'   => 'NVRs',
-            'content' => view('nvrs/index', ['items' => $items, 'totals' => $totals]),
+            'content' => view('nvrs/index', ['data' => $items, 'totals' => $totals]),
         ]);
     }
 

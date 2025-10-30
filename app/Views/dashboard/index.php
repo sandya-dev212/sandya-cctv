@@ -1,84 +1,122 @@
 <?php /* Views/dashboard/index.php */ ?>
-<section class="page-head" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-  <h1 style="margin-right:auto">Dashboard</h1>
+<section class="page-head flex flex-col" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  
+  <div class="w-full flex flex-col gap-3 items-start">
+    <p class="text-3xl text-white font-bold">Dashboard</p>
+    <div class="flex flex-row gap-3">
+      
+      <?php foreach($dashAccess as $dash):?>
+        <a href="/dashboard/<?= $dash['id'] ?>" class="text-white hover:cursor-pointer p-2 rounded-md <?= $curDashId == $dash['id'] ? 'bg-slate-400' : 'bg-slate-600' ?>"> <?= $dash['name']?> </a>
+      <?php endforeach;?>
+    </div>
 
-  <!-- Filter -->
-  <form method="get" action="/dashboard" id="flt" style="display:flex;gap:8px;align-items:center">
-    <input type="text" name="q" value="<?= esc($q ?? '') ?>" placeholder="Cari alias/NVR/monitor..." style="min-width:240px">
+    <?php if(session()->getFlashdata('message')): ?>
+        <div class="alert alert-dismissible fade show" role="alert">
+          <?= session()->getFlashdata('message') ?>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php endif; ?>
+  </div>
 
-    <label for="per">Per page</label>
-    <select name="per" id="per">
-      <?php foreach ([10,25,50,100] as $opt): ?>
-        <option value="<?= $opt ?>" <?= (isset($per) && (int)$per === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
-      <?php endforeach; ?>
-    </select>
-
-    <input type="hidden" name="page" value="<?= (int)($page ?? 1) ?>">
-    <button class="btn ghost" type="submit">Apply</button>
-    <a class="btn" href="/dashboard" style="background:#ef4444">Reset</a>
-
-    <!-- Slideshow toggle + interval -->
-    <button type="button" id="btnSlide" class="btn" style="background:#7c3aed">Slideshow Cameras</button>
-    <select id="slideMsSel" title="Interval slideshow (detik)" style="background:#111827;border:1px solid #1f2937;color:#e5e7eb;border-radius:10px;padding:8px">
-      <?php foreach ([5,10,15,30,60,120,300] as $s): ?>
-        <option value="<?= $s ?>"><?= $s ?>s</option>
-      <?php endforeach; ?>
-    </select>
-  </form>
+  <div class="w-full flex items-start">
+    <!-- Filter -->
+    <form method="get" action="/dashboard/<?= $curDashId ?>" id="flt" class="flex flex-col gap-3">
+      <div class="flex gap-3">
+        <input type="text" name="q" value="<?= esc($q ?? '') ?>" placeholder="Cari alias/NVR/monitor..." style="min-width:240px" class="bg-slate-800 p-2 rounded-md">
+        <input type="hidden" name="page" value="<?= (int)($page ?? 1) ?>" >
+        <button class="btn rounded-md bg-blue-500 hover:bg-blue-400" type="submit">Apply</button>
+        <a class="btn" href="/dashboard" style="background:#ef4444">Reset</a>
+      </div>
+      
+      <div class="w-full flex flex-row items-center gap-3">
+        <label for="per">Per page</label>
+        <select name="per" id="per" class="bg-slate-800 rounded-md p-2">
+          <?php foreach ([6, 12, 24, 46, 100] as $opt): ?>
+            <option value="<?= $opt ?>" <?= (isset($per) && (int)$per === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+  
+      <!-- Slideshow toggle + interval -->
+      <button type="button" id="btnSlide" class="btn" style="background:#7c3aed">Slideshow Cameras</button>
+      <select id="slideMsSel" title="Interval slideshow (detik)" style="background:#111827;border:1px solid #1f2937;color:#e5e7eb;border-radius:10px;padding:8px">
+        <?php foreach ([5,10,15,30,60,120,300] as $s): ?>
+          <option value="<?= $s ?>"><?= $s ?>s</option>
+        <?php endforeach; ?>
+      </select>
+    </form>
+  </div>
 </section>
 
 <?php if (empty($tiles)): ?>
   <p style="color:#94a3b8">Belum ada kamera untuk ditampilkan.</p>
 <?php else: ?>
-  <section id="grid" class="grid">
-    <?php foreach ($tiles as $t): ?>
-      <article class="card cam" draggable="true"
-               data-id="<?= esc($t['id']) ?>"
-               data-hls="<?= esc($t['hls']) ?>"
-               data-alias="<?= esc($t['alias']) ?>"
-               data-nvr-id="<?= (int)($t['nvr_id'] ?? 0) ?>"
-               data-mon="<?= esc($t['monitor_id']) ?>"
-               style="--w:1;--h:1">
-        <div class="thumb">
-          <video class="vid" muted playsinline autoplay></video>
 
-          <!-- fullscreen -->
-          <button class="btn ghost fs-btn" onclick="fsTile(event,this)" title="Fullscreen">⤢</button>
+  <div id="slideDiv" >
+    <div class="grid-stack bg-slate-50">
+      <?php foreach ($tiles as $t): ?>
+        <div class="grid-stack-item size-to-content" 
+          gs-x="<?= esc($t['size'])['x'] ?>"
+          gs-y="<?= esc($t['size'])['y'] ?>" 
+          gs-w="4" 
+          gs-h="4"
+          gs-size-to-content="3"
+        >
+          <div class="cam grid-stack-item-content" 
+            data-id="<?= esc($t['id']) ?>"
+            data-hls="<?= esc($t['hls']) ?>"
+            data-alias="<?= esc($t['alias']) ?>"
+            data-nvr-id="<?= $t['nvr_id'] ?? 0 ?>"
+            data-mon="<?= esc($t['monitor_id']) ?>"
+          >
 
-          <!-- label -->
-          <span class="chip cam-label" title="<?= esc($t['alias']) ?>">
-            <?= esc($t['nvr']) ?> / <?= esc($t['monitor_id']) ?>
-          </span>
-
-          <!-- actions (hidden; slide-in on hover/tap) -->
-          <div class="actions">
-            <a class="btn videos-btn" href="#" onclick="openVideos(this);return false;">Videos</a>
-            <button class="btn sBtn" title="Resize" onclick="cycleSize(this);return false;">⇲</button>
+            <div class="thumb">
+              <video class="vid h-full w-full object-cover bg-black" muted playsinline autoplay></video>
+  
+              <!-- fullscreen -->
+              <button class="btn ghost fs-btn" onclick="fsTile(event,this)" title="Fullscreen">⤢</button>
+  
+              <!-- label -->
+              <span class="chip cam-label" title="<?= esc($t['alias']) ?>">
+                <?= esc($t['nvr']) ?> / <?= esc($t['monitor_id']) ?>
+              </span>
+  
+              <!-- actions (hidden; slide-in on hover/tap) -->
+              <!-- <div class="actions">
+                <a class="btn videos-btn" href="#" onclick="openVideos(this);return false;">Videos</a>
+                <button class="btn sBtn" title="Resize" onclick="cycleSize(this);return false;">⇲</button>
+              </div> -->
+            </div>
           </div>
         </div>
-      </article>
-    <?php endforeach; ?>
-  </section>
+      <?php endforeach; ?>
+    </div>
+  </div>
 
+  <!-- Slideshow controls (muncul hanya saat slideshow ON) -->
+  <div id="slideCtrls" style="display:none;gap:8px;justify-content:center;margin:16px 0">
+    <button class="btn ghost" id="btnPrev">Previous</button>
+    <button class="btn ghost" id="btnNext">Next</button>
+  </div>
+  
   <!-- Pagination -->
   <div id="pager" class="pagination" style="display:flex;gap:6px;justify-content:center;margin:16px 0">
     <?php
-      $curr = (int)($page ?? 1);
-      $max  = (int)($pages ?? 1);
-      $perQ = (int)($per ?? 10);
+      $curr = $page ?? 1;
+      $max  = $pages ?? 1;
+      $perQ = $per ?? 10;
       $qStr = ($q ?? '') !== '' ? '&q=' . urlencode($q) : '';
-      $mk   = function($p) use ($perQ, $qStr){ return '/dashboard?page='.$p.'&per='.$perQ.$qStr; };
       $window = 2; $start = max(1, $curr-$window); $end = min($max, $curr+$window);
     ?>
 
     <?php if ($curr > 1): ?>
-      <a class="btn ghost" href="<?= $mk($curr-1) ?>">&laquo; Prev</a>
+      <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $curr - 1 .'&per='.$perQ.$qStr ?>">&laquo; Prev</a>
     <?php else: ?>
       <span class="btn ghost" style="opacity:.5;pointer-events:none">&laquo; Prev</span>
     <?php endif; ?>
 
     <?php if ($start > 1): ?>
-      <a class="btn ghost" href="<?= $mk(1) ?>">1</a>
+      <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. 1 .'&per='.$perQ.$qStr ?>">1</a>
       <?php if ($start > 2): ?><span class="btn ghost" style="pointer-events:none">…</span><?php endif; ?>
     <?php endif; ?>
 
@@ -86,17 +124,17 @@
       <?php if ($i === $curr): ?>
         <span class="btn" style="pointer-events:none"><?= $i ?></span>
       <?php else: ?>
-        <a class="btn ghost" href="<?= $mk($i) ?>"><?= $i ?></a>
+        <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $i .'&per='.$perQ.$qStr ?>"><?= $i ?></a>
       <?php endif; ?>
     <?php endfor; ?>
 
     <?php if ($end < $max): ?>
       <?php if ($end < $max-1): ?><span class="btn ghost" style="pointer-events:none">…</span><?php endif; ?>
-      <a class="btn ghost" href="<?= $mk($max) ?>"><?= $max ?></a>
+      <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $max .'&per='.$perQ.$qStr ?>"><?= $max ?></a>
     <?php endif; ?>
 
     <?php if ($curr < $max): ?>
-      <a class="btn ghost" href="<?= $mk($curr+1) ?>">Next &raquo;</a>
+      <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $curr + 1 .'&per='.$perQ.$qStr ?>">Next &raquo;</a>
     <?php else: ?>
       <span class="btn ghost" style="opacity:.5;pointer-events:none">Next &raquo;</span>
     <?php endif; ?>
@@ -110,12 +148,34 @@
 <?php endif; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<?php if(session()->getFlashdata('message')): ?>
+  <script>
+      $(document).ready(function() {
+          let message = "<?= session()->getFlashdata('message') ?>";
+          alert(message);
+      });
+  </script>
+<?php endif; ?>
+
 <script>
+  
+$(document).ready(() => {
+  $('.mainGrid .itemGrid').each(function(index) {
+    console.log('Grid #' + index, $(this).text());
+  });
+
+  const perPage = <?= $per ?>;
+  console.log(perPage);
+})
+
 /* ====== Helpers: cookies ====== */
 function setCookie(name, value, days=30) {
   const d = new Date(); d.setTime(d.getTime() + (days*24*60*60*1000));
   document.cookie = name + "=" + value + ";expires=" + d.toUTCString() + ";path=/";
 }
+
 function getCookie(name) {
   const n = name + "="; const ca = document.cookie.split(';');
   for (let i=0;i<ca.length;i++){ let c=ca[i].trim(); if (c.indexOf(n)==0) return c.substring(n.length,c.length); }
@@ -168,27 +228,27 @@ function openVideos(btn){
 /* ====== Drag order persist ====== */
 const grid = document.getElementById('grid');
 let dragSrc = null;
-grid?.addEventListener('dragstart', (e) => {
-  const card = e.target.closest('.cam'); if (!card) return;
-  dragSrc = card; e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', card.dataset.id);
-  card.classList.add('dragging');
-});
-grid?.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  const over = e.target.closest('.cam'); if (!over || over === dragSrc) return;
-  const cards = [...grid.querySelectorAll('.cam')];
-  const srcIndex  = cards.indexOf(dragSrc);
-  const overIndex = cards.indexOf(over);
-  if (srcIndex < overIndex) grid.insertBefore(dragSrc, over.nextSibling);
-  else grid.insertBefore(dragSrc, over);
-});
-grid?.addEventListener('drop', (e) => { e.preventDefault(); saveOrder(); });
-grid?.addEventListener('dragend', (e) => {
-  const card = e.target.closest('.cam');
-  if (card) card.classList.remove('dragging');
-  saveOrder();
-});
+// grid?.addEventListener('dragstart', (e) => {
+//   const card = e.target.closest('.cam'); if (!card) return;
+//   dragSrc = card; e.dataTransfer.effectAllowed = 'move';
+//   e.dataTransfer.setData('text/plain', card.dataset.id);
+//   card.classList.add('dragging');
+// });
+// grid?.addEventListener('dragover', (e) => {
+//   e.preventDefault();
+//   const over = e.target.closest('.cam'); if (!over || over === dragSrc) return;
+//   const cards = [...grid.querySelectorAll('.cam')];
+//   const srcIndex  = cards.indexOf(dragSrc);
+//   const overIndex = cards.indexOf(over);
+//   if (srcIndex < overIndex) grid.insertBefore(dragSrc, over.nextSibling);
+//   else grid.insertBefore(dragSrc, over);
+// });
+// grid?.addEventListener('drop', (e) => { e.preventDefault(); saveOrder(); });
+// grid?.addEventListener('dragend', (e) => {
+//   const card = e.target.closest('.cam');
+//   if (card) card.classList.remove('dragging');
+//   saveOrder();
+// });
 function saveOrder(){
   if (!grid) return;
   const ids = [...grid.querySelectorAll('.cam')].map(c => c.dataset.id);
@@ -205,47 +265,51 @@ function saveOrder(){
 })();
 
 /* ====== Resize per-tile (persist) ====== */
-const SIZE_SEQ = [[1,1],[2,1],[2,2]]; // cycle
-function loadSizes(){ try { return JSON.parse(localStorage.getItem('sandya_nvr_tile_sizes')||'{}') } catch(e){ return {}; } }
-function saveSizes(s){ localStorage.setItem('sandya_nvr_tile_sizes', JSON.stringify(s)); }
-function applySizes(){
-  const sizes = loadSizes();
-  document.querySelectorAll('.cam').forEach(c=>{
-    const id = c.dataset.id;
-    const s  = sizes[id];
-    if (s && s.w && s.h) {
-      c.style.setProperty('--w', s.w);
-      c.style.setProperty('--h', s.h);
-    }
-  });
-}
-function cycleSize(btn){
-  const card = btn.closest('.cam');
-  const id   = card.dataset.id;
-  const sizes= loadSizes();
-  const curW = parseInt(getComputedStyle(card).getPropertyValue('--w')) || 1;
-  const curH = parseInt(getComputedStyle(card).getPropertyValue('--h')) || 1;
-  let idx = SIZE_SEQ.findIndex(([w,h])=> w===curW && h===curH);
-  idx = (idx+1) % SIZE_SEQ.length;
-  const [nw,nh] = SIZE_SEQ[idx];
-  card.style.setProperty('--w', nw);
-  card.style.setProperty('--h', nh);
-  sizes[id] = {w:nw, h:nh};
-  saveSizes(sizes);
-}
-applySizes();
+// const SIZE_SEQ = [[1,1],[2,1],[2,2]]; // cycle
+// function loadSizes(){ try { return JSON.parse(localStorage.getItem('sandya_nvr_tile_sizes')||'{}') } catch(e){ return {}; } }
+// function saveSizes(s){ localStorage.setItem('sandya_nvr_tile_sizes', JSON.stringify(s)); }
+// function applySizes(){
+//   const sizes = loadSizes();
+//   document.querySelectorAll('.cam').forEach(c=>{
+//     const id = c.dataset.id;
+//     const s  = sizes[id];
+//     if (s && s.w && s.h) {
+//       c.style.setProperty('--w', s.w);
+//       c.style.setProperty('--h', s.h);
+//     }
+//   });
+// }
+
+// function cycleSize(btn){
+//   const card = btn.closest('.cam');
+//   const id   = card.dataset.id;
+//   const sizes= loadSizes();
+//   const curW = parseInt(getComputedStyle(card).getPropertyValue('--w')) || 1;
+//   const curH = parseInt(getComputedStyle(card).getPropertyValue('--h')) || 1;
+//   let idx = SIZE_SEQ.findIndex(([w,h])=> w===curW && h===curH);
+//   idx = (idx+1) % SIZE_SEQ.length;
+//   const [nw,nh] = SIZE_SEQ[idx];
+//   card.style.setProperty('--w', nw);
+//   card.style.setProperty('--h', nh);
+//   sizes[id] = {w:nw, h:nh};
+//   saveSizes(sizes);
+// }
+
+// applySizes();
 
 /* ====== Per page persist ====== */
 const perSel = document.getElementById('per');
+
 perSel?.addEventListener('change', () => {
   localStorage.setItem('sandya_nvr_perpage', perSel.value);
   document.getElementById('flt').submit();
 });
+
 (function applySavedPerPage(){
   try{
     const hasPerInUrl = new URLSearchParams(location.search).has('per');
     const saved = localStorage.getItem('sandya_nvr_perpage');
-    if (!hasPerInUrl && saved && ['10','25','50','100'].includes(saved) && perSel.value !== saved){
+    if (!hasPerInUrl && saved && ['6','12','24','100'].includes(saved) && perSel.value !== saved){
       perSel.value = saved;
       document.getElementById('flt').submit();
     }
@@ -253,11 +317,12 @@ perSel?.addEventListener('change', () => {
 })();
 
 /* ====== Slideshow dengan interval pilih + FIX start tanpa Apply ====== */
-const SLIDE_SIZE = 5;
+const SLIDE_SIZE = 6;
 const btnSlide   = document.getElementById('btnSlide');
 const ctrls      = document.getElementById('slideCtrls');
 const pager      = document.getElementById('pager');
 const slideMsSel = document.getElementById('slideMsSel');
+const slideDiv   = document.getElementById('slideDiv');
 
 let ROTATE_MS = parseInt(getCookie('sandya_slide_ms') || localStorage.getItem('sandya_slide_ms') || '8000') || 8000;
 if (slideMsSel) {
@@ -269,18 +334,22 @@ if (slideMsSel) {
   if (!matched) slideMsSel.value = String(sec);
 }
 
-let slideOn    = (getCookie('sandya_slideshow') === '1') || (localStorage.getItem('sandya_slideshow') === '1');
+let slideOn    = false;
 let slideIndex = parseInt(getCookie('sandya_slide_index') || localStorage.getItem('sandya_slide_index') || '0') || 0;
 let slideTimer = null;
 
 function cams(){ return [...(grid?.querySelectorAll('.cam')||[])]; }
 
 function showSlice() {
-  if (!grid) return;
+  // if (!grid) return;
   const all = cams();
-  if (!all.length) return;
+  // if (!all.length) return;
 
-  const pages = Math.max(1, Math.ceil(all.length / SLIDE_SIZE));
+  const perPage = <?= $per ?>;
+  // console.log('perPage ' + perPage);
+
+  const pages = Math.max(1, Math.ceil(perPage / SLIDE_SIZE));
+  // console.log(pages);
   slideIndex = ((slideIndex % pages) + pages) % pages; // wrap
   const start = slideIndex * SLIDE_SIZE;
   const end   = start + SLIDE_SIZE;
@@ -323,14 +392,33 @@ function stopAuto() {
 
 /* CLICK: langsung jalan tanpa Apply */
 btnSlide?.addEventListener('click', () => {
+
+  // let totalShow = <?= $per ?> / 2;
+  // $('.mainGrid .itemGrid').each( function(index) {
+  //   if (index < totalShow ) {
+  //     // $(this).addClass('hidden');
+  //   }
+  // });
+
   slideOn = !slideOn;
+  
   if (slideOn) {
     slideIndex = 0;
     // pastikan DOM siap & elemen kamera sudah ada
+    console.log('start slideshow');
     requestAnimationFrame(()=>{ showSlice(); startAuto(); });
   } else {
     stopAuto(); clearSlice();
   }
+
+  // if (slideDiv.requestFullscreen) {
+  //   slideDiv.requestFullscreen();
+  // } else if (slideDiv.webkitRequestFullscreen) { // Safari
+  //   slideDiv.webkitRequestFullscreen();
+  // } else if (slideDiv.msRequestFullscreen) { // IE11
+  //   slideDiv.msRequestFullscreen();
+  // }
+
   updateBtn();
 });
 
@@ -365,15 +453,15 @@ slideMsSel?.addEventListener('change', ()=>{
 
 <style>
 /* ====== Grid & tile ====== */
-#grid.grid{
+/* #grid.grid{
   --row: 200px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   grid-auto-rows: var(--row);
   grid-auto-flow: dense;
   gap: 16px;
-}
-.cam{
+} */
+/* .cam{
   grid-column: span var(--w,1);
   grid-row: span var(--h,1);
   min-height: calc(var(--h,1) * var(--row));
@@ -381,7 +469,7 @@ slideMsSel?.addEventListener('change', ()=>{
   display: flex;
   flex-direction: column;
 }
-.cam.dragging { opacity:.6; transform:scale(.98); }
+.cam.dragging { opacity:.6; transform:scale(.98); } */
 
 .thumb{
   position: relative;
@@ -391,16 +479,16 @@ slideMsSel?.addEventListener('change', ()=>{
   height: 100%;
   display: flex;
 }
-.vid{ width:100%; height:100%; object-fit:cover; background:#000; }
+/* .vid{ width:100%; height:100%; object-fit:cover; background:#000; }   */
 
-.actions{
+/* .actions{
   position:absolute; left:0; right:0; bottom:0;
   display:flex; justify-content:center; align-items:center; gap:10px;
   padding:12px;
   transform: translateY(110%);
   opacity:0; transition: all .18s ease;
   background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.45) 60%, rgba(0,0,0,.65) 100%);
-}
+} */
 .thumb:hover .actions,
 .thumb:active .actions { transform: translateY(0%); opacity:1; }
 .videos-btn { background:#7c3aed; color:#fff; text-decoration:none; padding:10px 16px; border-radius:10px; font-weight:700; }
