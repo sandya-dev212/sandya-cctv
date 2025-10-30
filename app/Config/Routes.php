@@ -13,16 +13,17 @@ $routes->post('login', 'Auth::doLogin');
 $routes->get('logout', 'Auth::logout');
 
 // ---------- Main Dashboard ----------
-$routes->get('dashboard',          'Dashboard::index');
+$routes->get('dashboard/(:num)',  'Dashboard::index/$1');
 $routes->get('dashboard/refresh',  'Dashboard::refresh');
 
 // ---------- Dashboards (CRUD + view + legacy remove) ----------
-$routes->get ('dashboards',                   'Dashboards::index');            // list
+$routes->get ('user-dashboards',                   'Dashboards::index');            // list
 $routes->get ('dashboards/new',               'Dashboards::create');           // form create
 $routes->post('dashboards/store',             'Dashboards::store');            // save create
 $routes->get ('dashboards/(:num)/edit',       'Dashboards::edit/$1');          // form edit
 $routes->post('dashboards/(:num)/update',     'Dashboards::update/$1');        // save edit
 $routes->post('dashboards/(:num)/delete',     'Dashboards::delete/$1');        // delete
+$routes->post('dashboards/(:num)/delete-access', 'Dashboards::deleteAccess/$1');  // delete
 $routes->get ('dashboards/(:num)',            'Dashboards::view/$1');          // open dashboard (redir to cameras mapping)
 $routes->post('dashboards/remove',            'Dashboards::remove');           // (legacy) remove mapping item
 
