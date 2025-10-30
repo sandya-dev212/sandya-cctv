@@ -186,122 +186,43 @@ q?.addEventListener('input',()=>{const s=q.value.toLowerCase();
     {
         if ($r = $this->mustLogged()) return $r;
 
-        $userId = (int)session('user_id');
+        $userId = session('user_id');
         $role   = session('role') ?? 'user';
         $um     = new UserModel();
         $me     = $um->find($userId);
         $csrf   = csrf_hash();
 
+        // If the switcher is superadmin, set the parentId as his id
+        // and set selectedId also his id
+        if ($role == 'superadmin') {
+          session()->set('parentId', $userId);
+          $selectedId = $userId;
+        }
+
+        // But if the switcher is from user (dashboard), set the selected id still the parent id that set before
+        // to make sure even in the user dashboard, the linked user still results the childern of the parent
+        $selectedId = session('parentId');
+
         $db = $this->db();
 
-        if ($role === 'superadmin') {
-            // anak-anak dari superadmin yang login
-            $rows = $db->table('user_links ul')->select('u.*')
-                ->join('users u','u.id = ul.child_user_id')
-                ->where('ul.parent_user_id',$userId)
-                ->orderBy('u.username')->get()->getResultArray();
+        $rows = $db->table('user_links ul')->select('u.*')
+            ->join('users u','u.id = ul.child_user_id')
+            ->where('ul.parent_user_id', $selectedId)
+            ->orderBy('u.username')->get()->getResultArray();
 
-            return $this->response->setBody($this->renderSwitcherSuper($me,$rows,$csrf));
-        } else {
-            // semua parent superadmin dari user ini (bisa lebih dari 1)
-            $rows = $db->table('user_links ul')->select('p.*')
-                ->join('users p','p.id = ul.parent_user_id')
-                ->where('ul.child_user_id',$userId)
-                ->where('p.role','superadmin')
-                ->orderBy('p.username')->get()->getResultArray();
-
-            return $this->response->setBody($this->renderSwitcherUser($me,$rows,$csrf));
-        }
+        $data['csrf'] = $csrf;
+        $data['user'] = $me;
+        $data['result'] = $rows;
+        return view('partials/switchAcc', $data);
     }
-
-    private function renderSwitcherSuper(array $me,array $linked,string $csrf): string
-    {
-        $meU = esc($me['username']??'user'); ob_start(); ?>
-<div id="acc-switcher" style="position:fixed;top:70px;right:20px;z-index:9999">
-  <div style="background:#0f172a;border:1px solid #1f2937;border-radius:16px;min-width:320px;max-width:420px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.4)">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
-      <div><strong>Signed in:</strong> <?= $meU ?> <span style="opacity:.6">[superadmin]</span></div>
-      <button onclick="document.getElementById('acc-switcher').remove()" style="background:#111827;border:1px solid #374151;border-radius:10px;color:#e5e7eb;padding:6px 10px;cursor:pointer">Close</button>
-    </div>
-
-    <div style="font-size:12px;opacity:.8;margin:6px 0 8px">Linked users:</div>
-    <?php if (empty($linked)): ?>
-      <div style="opacity:.8">none</div>
-    <?php else: ?>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <?php foreach ($linked as $u):
-          $id=(int)$u['id']; $uu=esc($u['username']); $nm=esc($u['full_name']??''); ?>
-          <form method="post" action="/switch-as/<?= $id ?>" onsubmit="return confirm('Switch ke <?= $uu ?>?')">
-            <input type="hidden" name="<?= csrf_token() ?>" value="<?= $csrf ?>">
-            <button type="submit" style="width:100%;text-align:left;padding:10px;border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb;cursor:pointer">
-              <div><strong><?= $uu ?></strong></div>
-              <?php if ($nm!==''): ?><div style="font-size:12px;opacity:.8"><?= $nm ?></div><?php endif; ?>
-            </button>
-          </form>
-        <?php endforeach; ?>
-      </div>
-    <?php endif; ?>
-  </div>
-</div>
-<?php return ob_get_clean(); }
-
-    private function renderSwitcherUser(array $me,array $parents,string $csrf): string
-    {
-        $meU = esc($me['username']??'user'); ob_start(); ?>
-<div id="acc-switcher" style="position:fixed;top:70px;right:20px;z-index:9999">
-  <div style="background:#0f172a;border:1px solid #1f2937;border-radius:16px;min-width:320px;max-width:420px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.4)">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
-      <div><strong>Signed in:</strong> <?= $meU ?> <span style="opacity:.6">[user]</span></div>
-      <button onclick="document.getElementById('acc-switcher').remove()" style="background:#111827;border:1px solid #374151;border-radius:10px;color:#e5e7eb;padding:6px 10px;cursor:pointer">Close</button>
-    </div>
-
-    <div style="font-size:12px;opacity:.8;margin:6px 0 8px">Switch to parent:</div>
-    <?php if (empty($parents)): ?>
-      <div style="opacity:.8">none</div>
-    <?php else: ?>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <?php foreach ($parents as $p):
-          $u=esc($p['username']); ?>
-        <form method="post" action="/switch-to-parent">
-          <input type="hidden" name="<?= csrf_token() ?>" value="<?= $csrf ?>">
-          <input type="hidden" name="parent_username" value="<?= $u ?>">
-          <div style="display:flex;gap:8px;align-items:center">
-            <div style="flex:1 1 auto">
-              <div><strong><?= $u ?></strong></div>
-              <input name="password" type="password" placeholder="Password parent" style="width:100%;margin-top:6px;padding:8px;border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb" required>
-            </div>
-            <div>
-              <button type="submit" style="padding:10px 12px;border-radius:10px;border:1px solid #7c3aed;background:#7c3aed;color:#0b1020;font-weight:700;cursor:pointer">Switch</button>
-            </div>
-          </div>
-        </form>
-        <?php endforeach; ?>
-      </div>
-    <?php endif; ?>
-  </div>
-</div>
-<?php return ob_get_clean(); }
 
     /* ========= Switch Actions ========= */
 
     // POST /switch-as/{childId}
     public function switchAs($childId=null)
     {
-        if ($r = $this->mustSuperadmin()) return $r;
-
-        $parentId = (int)session('user_id');
-        $childId  = (int)$childId;
-        if ($childId<=0) return redirect()->to('/dashboard');
-
-        if (!$this->isLinked($parentId,$childId)) {
-            return redirect()->to('/dashboard')->with('error','User tidak ter-link.');
-        }
-
         $um = new UserModel();
         $child = $um->find($childId);
-        if (!$child || (int)$child['is_active']!==1 || ($child['role']??'user')!=='user') {
-            return redirect()->to('/dashboard')->with('error','Child invalid.');
-        }
 
         session()->set([
             'isLoggedIn'=>true,
@@ -312,11 +233,11 @@ q?.addEventListener('input',()=>{const s=q.value.toLowerCase();
             'name'=>$child['full_name'] ?? $child['username'],
             'role'=>$child['role'] ?? 'user',
             'auth'=>$child['auth_source'] ?? 'local',
-            'impersonator_id'=>$parentId,
+            'parentId'=>session('parentId'),
         ]);
         $um->update($child['id'], ['last_login_at'=>date('Y-m-d H:i:s')]);
 
-        return redirect()->to('/dashboard')->with('message','Switched as '.$child['username']);
+        return redirect()->to('/dashboard/0')->with('message','Switched as '.$child['username']);
     }
 
     // POST /switch-to-parent
