@@ -33,7 +33,7 @@ class Cameras extends Controller
         $dashboardActiveId = (int)($this->request->getGet('dashboard_id') ?? ($dashboards[0]['id'] ?? 0));
 
         // Ambil monitors dari Shinobi
-        $streams = ['ok'=>false, 'items'=>[],'msg'=>''];
+        $streams = ['ok' => false, 'items' => [], 'msg' => ''];
         if ($active) {
             $cli = new Shinobi();
             $res = $cli->getMonitors($active['base_url'], $active['api_key'], $active['group_key']);
@@ -46,15 +46,10 @@ class Cameras extends Controller
         }
 
         // Set of assigned monitor_id untuk dashboard aktif
-        $assignedSet = [];
-        if ($dashboardActiveId > 0) {
-            $dm = new DashboardMonitorModel();
-            $rows = $dm->select('monitor_id')->where([
-                'dashboard_id' => $dashboardActiveId,
-                'nvr_id'       => $nvrId,
-            ])->findAll();
-            foreach ($rows as $r) $assignedSet[(string)$r['monitor_id']] = true;
-        }
+        $dm = new DashboardMonitorModel();
+        $assignedBy = $dm->select('dashboard_id, monitor_id, dashboards.name')
+        ->join('dashboards', 'dashboards.id = dashboard_monitors.dashboard_id')
+        ->findAll();
 
         return view('layout/main', [
             'title'   => 'Cameras',
@@ -64,7 +59,7 @@ class Cameras extends Controller
                 'streams'           => $streams,
                 'dashboards'        => $dashboards,
                 'dashboardActiveId' => $dashboardActiveId,
-                'assignedSet'       => $assignedSet,
+                'assignedBy'       => $assignedBy,
             ]),
         ]);
     }
@@ -73,8 +68,8 @@ class Cameras extends Controller
     {
         if ($r = $this->guard()) return $r;
 
-        $dashboard_id = (int)$this->request->getPost('dashboard_id');
-        $nvr_id       = (int)$this->request->getPost('nvr_id');
+        $dashboard_id = $this->request->getPost('dashboard_id');
+        $nvr_id       = $this->request->getPost('nvr_id');
         $monitor_id   = trim($this->request->getPost('monitor_id') ?? '');
         $alias        = trim($this->request->getPost('alias') ?? '');
 
@@ -89,7 +84,7 @@ class Cameras extends Controller
             $dm->update($exists['id'], ['alias'=>$alias]);
             return $this->response->setJSON(['ok'=>true,'msg'=>'Updated alias','id'=>$exists['id']]);
         } else {
-            $sort = (int)($dm->where('dashboard_id',$dashboard_id)->selectMax('sort_order')->first()['sort_order'] ?? 0) + 1;
+            $sort = ($dm->where('dashboard_id',$dashboard_id)->selectMax('sort_order')->first()['sort_order'] ?? 0) + 1;
             $id = $dm->insert([
                 'dashboard_id'=>$dashboard_id,
                 'nvr_id'=>$nvr_id,
@@ -160,7 +155,7 @@ class Cameras extends Controller
     {
         if ($r = $this->guard()) return $r;
 
-        $id = (int)$this->request->getPost('id');
+        $id = $this->request->getPost('id');
         if (!$id) return $this->response->setJSON(['ok'=>false,'msg'=>'id kosong']);
 
         (new DashboardMonitorModel())->delete($id);
