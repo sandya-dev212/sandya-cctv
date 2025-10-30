@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\UserModel;
+use App\Models\UserDashboardModel;
 use App\Libraries\Ldap_lib;
 
 class Auth extends BaseController
@@ -33,6 +34,7 @@ class Auth extends BaseController
         }
 
         $um   = new UserModel();
+        $userDashboardModel = new UserDashboardModel();
         $user = $um->where('username', $username)->first();
 
         /**
@@ -45,64 +47,86 @@ class Auth extends BaseController
                     return $this->failLogin('User nonaktif.');
                 }
                 $this->setSessionAndTouch($user);
-                return redirect()->to('/dashboard');
+
+                $dashRows = $userDashboardModel
+                    ->select('dashboard_id')
+                    ->where('user_id', $user['id'])
+                    ->get()->getResultArray();
+
+                // Set the dashboard id
+                if (in_array($user['role'], ['superadmin', 'admin'])) {
+                    $numDash = 0;
+                } else {
+                    $numDash = $dashRows[0]['dashboard_id'];
+                }
+
+                return redirect()->to('/dashboard/' . $numDash);
             }
             // gagal local → lanjut ke LDAP fallback di bawah
-        }
-
-        /**
-         * 2) LDAP auth (kalau user bertipe ldap atau fallback dari local)
-         */
-        $ldap = new Ldap_lib();
-        $info = $ldap->login($username, $password); // return array info atau false
-
-        if ($info !== false) {
-            if (!$user) {
-                // user belum ada → buat baru bertipe LDAP
-                $user = [
-                    'username'       => $info['username'] ?? $username,
-                    'email'          => $info['email'] ?? null,
-                    'full_name'      => $info['full_name'] ?? $username,
-                    'password_hash'  => null,       // JANGAN simpan password
-                    'auth_source'    => 'ldap',
-                    'role'           => 'user',     // default
-                    'is_active'      => 1,
-                    'last_login_at'  => date('Y-m-d H:i:s'),
-                ];
-                $id = $um->insert($user);
-                // pastikan dapat ID
-                if (!$id) {
-                    return $this->failLogin('Gagal membuat user LDAP.');
-                }
-                $user['id'] = $id;
-            } else {
-                // user sudah ada → pastikan ditandai ldap + update info dasar
-                if (($user['auth_source'] ?? 'local') !== 'ldap') {
+        } else {
+            /**
+             * 2) LDAP auth (kalau user bertipe ldap atau fallback dari local)
+             */
+            $ldap = new Ldap_lib();
+            $info = $ldap->login($username, $password); // return array info atau false
+    
+            if ($info !== false) {
+                if (!$user) {
+                    // user belum ada → buat baru bertipe LDAP
+                    $user = [
+                        'username'       => $info['username'] ?? $username,
+                        'email'          => $info['email'] ?? null,
+                        'full_name'      => $info['full_name'] ?? $username,
+                        'password_hash'  => null,       // JANGAN simpan password
+                        'auth_source'    => 'ldap',
+                        'role'           => 'user',     // default
+                        'is_active'      => 1,
+                        'last_login_at'  => date('Y-m-d H:i:s'),
+                    ];
+                    $id = $um->insert($user);
+                    // pastikan dapat ID
+                    if (!$id) {
+                        return $this->failLogin('Gagal membuat user LDAP.');
+                    }
+                    $user['id'] = $id;
+                } else {
+                    // user sudah ada → pastikan ditandai ldap + update info dasar
+                    if (($user['auth_source'] ?? 'local') !== 'ldap') {
+                        $um->update($user['id'], [
+                            'auth_source'   => 'ldap',
+                            'password_hash' => null, // hapus hash lokal
+                        ]);
+                    }
+                    if ((int) $user['is_active'] !== 1) {
+                        return $this->failLogin('User nonaktif.');
+                    }
+                    // sinkron info dari LDAP (jika ada)
                     $um->update($user['id'], [
-                        'auth_source'   => 'ldap',
-                        'password_hash' => null, // hapus hash lokal
+                        'email'         => $info['email'] ?? $user['email'],
+                        'full_name'     => $info['full_name'] ?? $user['full_name'],
+                        'last_login_at' => date('Y-m-d H:i:s'),
                     ]);
+                    // refresh user
+                    $user = $um->find($user['id']);
                 }
-                if ((int) $user['is_active'] !== 1) {
-                    return $this->failLogin('User nonaktif.');
-                }
-                // sinkron info dari LDAP (jika ada)
-                $um->update($user['id'], [
-                    'email'         => $info['email'] ?? $user['email'],
-                    'full_name'     => $info['full_name'] ?? $user['full_name'],
-                    'last_login_at' => date('Y-m-d H:i:s'),
-                ]);
-                // refresh user
-                $user = $um->find($user['id']);
-            }
 
-            $this->setSessionAndTouch($user);
-            return redirect()->to('/dashboard');
+                // Set the dashboard id
+                $dashRows = $userDashboardModel
+                    ->select('dashboard_id')
+                    ->where('user_id', $user['id'])
+                    ->get()->getResultArray();
+
+                if (in_array($user['role'], ['superadmin', 'admin'])) {
+                    $numDash = 0;
+                } else {
+                    $numDash = $dashRows[0]['dashboard_id'];
+                }
+    
+                $this->setSessionAndTouch($user);
+                return redirect()->to('/dashboard/' . $numDash);
+            }
         }
 
-        /**
-         * 3) Local gagal & LDAP gagal
-         */
         return $this->failLogin('Username atau password salah.');
     }
 
