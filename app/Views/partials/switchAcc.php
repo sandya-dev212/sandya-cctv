@@ -9,7 +9,7 @@
         <form method="post" action="/switch-as/<?= session('parentId')?>" onsubmit="return confirm('Switch ke Main Dashboard?')">
             <input type="hidden" name="<?= csrf_token() ?>" value="<?= $csrf ?>">
             <button type="submit" class="w-full text-left p-2 rounded-lg  border border-[#374151] bg-[#0b1220] color-[#e5e7eb] cursor-pointer">
-                <div><strong>Back To Main Dashboard <?= session('parentId')?></strong></div>
+                <div><strong>Back to <?= session('parentUsername')?></strong></div>
             </button>
         </form>
     <?php endif; ?>
