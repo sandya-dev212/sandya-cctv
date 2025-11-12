@@ -13,7 +13,6 @@
 
   <!-- App assets -->
   <link href="/assets/app.css" rel="stylesheet">
-  <link href="/assets/css/main.css" rel="stylesheet">
   <link href="/assets/css/output.css" rel="stylesheet">
 
   <script defer src="/assets/app.js"></script>
@@ -22,12 +21,21 @@
 
   <link href="https://cdn.jsdelivr.net/npm/gridstack@9.2.2/dist/gridstack.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/gridstack@9.2.2/dist/gridstack-all.min.js"></script>
-
 </head>
-<body>
-  <?= view('partials/navbar') ?>
 
-  <main class="container">
+<?php
+  $uri      = service('uri');
+  $seg1     = strtolower($uri->getSegment(1) ?? '');
+  $isLogin  = ($seg1 === 'login');
+  $isAuthed = (bool) session('isLoggedIn');
+?>
+
+<body>
+  <?php if (!$isLogin && $isAuthed): ?>
+    <?= view('partials/navbar') ?>
+  <?php endif; ?>
+
+  <main class="bg-[#0b1220] px-[10%] py-[5%]">
     <?= $content ?? '' ?>
   </main>
 
@@ -35,19 +43,5 @@
   <div id="spinner" class="spinner hidden">
     <div class="loader"></div>
   </div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      GridStack.init({
-        column: 12,
-        cellHeight: 100,
-        float: false,
-        resizeToContent: true,
-        resizable: {
-          handles: 'all'
-        }
-      }).compact();
-    });
-  </script>
 </body>
 </html>
