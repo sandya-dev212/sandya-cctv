@@ -1,5 +1,5 @@
-<section class="page-head">
-  <h1>NVRs</h1>
+<section class="w-full flex flex-row justify-between mb-10">
+  <p class="text-3xl text-white font-bold">NVRs</p>
   <a class="btn" href="/nvrs/new">Add NVR</a>
 </section>
 
