@@ -137,6 +137,41 @@ class Dashboard extends BaseController
         ]);
     }
 
+    public function getAllCameras() {
+
+        $cards = [];
+        $cli   = new Shinobi();
+
+        $nvrs = $this->db->table('nvrs')
+            ->where('is_active', 1)
+            ->orderBy('name', 'ASC')
+            ->get()->getResultArray();
+
+        foreach ($nvrs as $n) {
+            $resp = $cli->getMonitors($n['base_url'], $n['api_key'], $n['group_key'], null);
+
+            if (!$resp['ok'] || !is_array($resp['data'])) continue;
+
+            foreach ($cli->normalizeMonitors($resp['data']) as $m) {
+                $alias = $m['name'] ?: ($n['name'] . ' / ' . $m['mid']);
+            
+                $cards[] = [
+                    'id'         => 'NVR:' . $n['id'] . '/' . $m['mid'],
+                    'alias'      => $alias,
+                    'nvr'        => $n['name'],
+                    'nvr_id'     => (int)$n['id'],
+                    'monitor_id' => (string)$m['mid'],
+                    'hls'        => $cli->hlsUrl($n['base_url'], $n['api_key'], $n['group_key'], (string)$m['mid']),
+                    'size'       => [ 'x' => 0, 'y' => 0, 'w' => 4, 'h' => 4]
+                ];
+            }
+        }
+
+        return $this->response->setJSON([
+            'tiles' => $cards,
+        ]);
+    }
+
     public function refresh()
     {
         return $this->response->setJSON([
