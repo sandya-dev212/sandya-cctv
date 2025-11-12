@@ -59,7 +59,8 @@ $monitors = $monitors ?? [];
 <table class="v-table mt-10" id="tbl">
   <thead>
     <tr>
-      <th>Waktu (filename)</th>
+      <th>Filename</th>
+      <th>Waktu </th>
       <th>Size</th>
       <th>Aksi</th>
     </tr>
@@ -89,8 +90,8 @@ $monitors = $monitors ?? [];
 const qs=s=>document.querySelector(s);
 const nvrSel=qs('#nvrSel'), monSel=qs('#monSel'), tb=qs('#tbl tbody');
 
-flatpickr("#start",{enableTime:true,dateFormat:"Y-m-d H:i:S",defaultDate:new Date(Date.now()-3*24*3600*1000)});
-flatpickr("#end",{enableTime:true,dateFormat:"Y-m-d H:i:S",defaultDate:new Date()});
+flatpickr("#start",{enableTime:true,dateFormat:"Y-m-d H:i:S",defaultDate:new Date(Date.now()-3*24*3600*1000),time_24hr: true});
+flatpickr("#end",{enableTime:true,dateFormat:"Y-m-d H:i:S",defaultDate:new Date(),time_24hr: true});
 
 // Ganti NVR → load monitors
 nvrSel.addEventListener('change', async ()=>{
@@ -123,7 +124,8 @@ async function loadData(){
     const tr=document.createElement('tr');
     tr.innerHTML = `
       <td>${row.name}</td>
-      <td>${row.size||''}</td>
+      <td>${row.time}</td>
+      <td>${row.size||''} MB</td>
       <td><a href="#" data-play="${row.play}" class="v-pill">Play</a> <a href="${row.download}" target="_blank" rel="noopener"  class="v-pill">Download</a></td>`;
     tr.querySelector('a[data-play]').addEventListener('click',(e)=>{e.preventDefault();openPlayer(row.play);});
     tb.appendChild(tr);
