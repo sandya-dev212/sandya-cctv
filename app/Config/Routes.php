@@ -15,6 +15,7 @@ $routes->get('logout', 'Auth::logout');
 // ---------- Main Dashboard ----------
 $routes->get('dashboard/(:num)',  'Dashboard::index/$1');
 $routes->get('dashboard/refresh',  'Dashboard::refresh');
+$routes->get('dashboard/getAllCameras',  'Dashboard::getAllCameras');
 
 // ---------- Dashboards (CRUD + view + legacy remove) ----------
 $routes->get ('user-dashboards',                   'Dashboards::index');            // list
