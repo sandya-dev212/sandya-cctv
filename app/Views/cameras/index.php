@@ -11,6 +11,7 @@
         </option>
       <?php endforeach; ?>
     </select>
+    <p>Total Camera: <span class="font-bold"><?= count($streams['items']) ?></span></p>
   </form>
 
 </section>
