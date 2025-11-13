@@ -7,7 +7,7 @@ $monitors = $monitors ?? [];
 <link rel="stylesheet" href="https://unpkg.com/flatpickr/dist/flatpickr.min.css">
 <style>
 .v-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0 16px}
-.v-table{width:100%;border-collapse:collapse}
+.v-table{border-collapse:collapse}
 .v-table th,.v-table td{padding:10px;border-bottom:1px solid #1f2937;text-align:left}
 .v-modal-back{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
 .v-modal{width:min(1100px,92vw);background:#0b1220;border:1px solid #1f2937;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
@@ -22,10 +22,10 @@ $monitors = $monitors ?? [];
 <div class="flex flex-col gap-3 mt-10">
   <div class="flex flex-col gap-1">
     <label class="font-bold">Select NVR</label>
-    <select id="nvrSel" class="w-[50%] bg-slate-800 p-2 rounded-md hover:cursor-pointer">
-      <option value=""><?= esc('Select NVR') ?></option>
+    <select id="nvrSel" class="w-[25%] bg-slate-800 p-2 rounded-md hover:cursor-pointer max-[850px]:w-full">
+      <option value="" class="truncate"><?= esc('Select NVR') ?></option>
       <?php foreach ($nvrs as $n): ?>
-        <option value="<?= (int)$n['id'] ?>" <?= ($nvrId && (int)$nvrId===(int)$n['id'])?'selected':'' ?>>
+        <option class="truncate" value="<?= (int)$n['id'] ?>" <?= ($nvrId && (int)$nvrId===(int)$n['id'])?'selected':'' ?>>
           <?= esc($n['name']) ?>
         </option>
       <?php endforeach; ?>
@@ -34,11 +34,11 @@ $monitors = $monitors ?? [];
   
   <div class="flex flex-col gap-1">
     <label class="font-bold">Select Camera</label>
-    <select id="monSel" class="w-[50%] bg-slate-800 p-2 rounded-md hover:cursor-pointer">
-      <option value=""><?= esc('Select Camera') ?></option>
+    <select id="monSel" class="w-[25%] bg-slate-800 p-2 rounded-md hover:cursor-pointer max-[850px]:w-full">
+      <option value="" class="truncate"><?= esc('Select Camera') ?></option>
       <?php if ($nvrId && $monitors): ?>
         <?php foreach ($monitors as $m): ?>
-          <option value="<?= esc($m['mid']) ?>" <?= ($mon && $mon===$m['mid'])?'selected':'' ?>>
+          <option class="truncate" value="<?= esc($m['mid']) ?>" <?= ($mon && $mon===$m['mid'])?'selected':'' ?>>
             <?= esc($m['mid'] . ' — ' . $m['name']) ?>
           </option>
         <?php endforeach; ?>
@@ -48,27 +48,29 @@ $monitors = $monitors ?? [];
 
   <div class="flex flex-col gap-1">
     <label class="font-bold">Start</label>
-    <input id="start" style="min-width:230px" class="w-[50%] bg-slate-800 p-2 rounded-md hover:cursor-pointer">
+    <input id="start" style="min-width:230px" class="w-[25%] bg-slate-800 p-2 rounded-md hover:cursor-pointer max-[850px]:w-full">
     <label class="font-bold">End</label>
-    <input id="end" style="min-width:230px" class="w-[50%] bg-slate-800 p-2 rounded-md hover:cursor-pointer">
+    <input id="end" style="min-width:230px" class="w-[25%] bg-slate-800 p-2 rounded-md hover:cursor-pointer max-[850px]:w-full">
   </div>
 
-  <button id="apply" class="v-pill w-[50%] flex justify-center mt-4">Apply</button>
+  <button id="apply" class="v-pill w-[25%] flex justify-center mt-4 max-[850px]:w-full">Apply</button>
 </div>
 
-<table class="v-table mt-10" id="tbl">
-  <thead>
-    <tr>
-      <th>Filename</th>
-      <th>Waktu </th>
-      <th>Size</th>
-      <th>Aksi</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td colspan="3" style="color:#94a3b8">Pilih NVR & kamera.</td></tr>
-  </tbody>
-</table>
+<div class="overflow-x-auto">
+  <table class="v-table mt-10 w-full max-[850px]:min-w-[850px]" id="tbl">
+    <thead>
+      <tr>
+        <th>Filename</th>
+        <th>Waktu </th>
+        <th>Size</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td colspan="3" style="color:#94a3b8">Pilih NVR & kamera.</td></tr>
+    </tbody>
+  </table>
+</div>
 
 <div id="vModalBack" class="v-modal-back">
   <div class="v-modal">

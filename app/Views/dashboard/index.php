@@ -1,5 +1,5 @@
 <?php /* Views/dashboard/index.php */ ?>
-<div id="pageHead" class="flex flex-col gap-3 ">
+<div id="pageHead" class="flex flex-col gap-3">
   
   <div class="w-full flex flex-col gap-3 items-start">
     <p class="text-3xl text-white font-bold">Dashboard</p>
@@ -18,14 +18,16 @@
     <?php endif; ?>
   </div>
 
-  <div class="w-full flex justify-between">
+  <div class="w-full flex justify-between max-[850px]:flex-col">
     
     <form method="get" action="/dashboard/<?= $curDashId ?>" id="flt" class="flex flex-col gap-3 mb-10">
-      <div class="flex gap-3">
+      <div class="flex gap-3 max-[850px]:flex-col">
         <input type="text" name="q" value="<?= esc($q ?? '') ?>" placeholder="Cari alias/NVR/monitor..." style="min-width:240px" class="bg-slate-800 p-2 rounded-md">
         <input type="hidden" name="page" value="<?= (int)($page ?? 1) ?>" >
-        <button class="btn rounded-md bg-blue-500 hover:bg-blue-400 hover:cursor-pointer" type="submit">Search</button>
-        <a class="btn" href="/dashboard/0" style="background:#ef4444">Reset</a>
+        <div class="flex flex-row gap-3">
+          <button class="btn rounded-md bg-blue-500 hover:bg-blue-400 hover:cursor-pointer max-[850px]:w-full" type="submit">Search</button>
+          <a class="btn text-center" href="/dashboard/0" style="background:#ef4444">Reset</a>
+        </div>
       </div>
       
       <div class="w-full flex flex-row items-center gap-3">
@@ -38,8 +40,8 @@
       </div>
     </form>
 
-    <div class="flex flex-row items-center gap-3">
-      <button type="button" id="btnSlide" class="btn hover:cursor-pointer" style="background:#7c3aed">Slideshow Cameras</button>
+    <div class="flex flex-row items-center gap-3 mb-5">
+      <button type="button" id="btnSlide" class="btn hover:cursor-pointer max-[850px]:w-full" style="background:#7c3aed">Slideshow Cameras</button>
       <select id="slideMsSel" title="Interval slideshow (detik)" style="background:#111827;border:1px solid #1f2937;color:#e5e7eb;border-radius:10px;padding:8px">
         <?php foreach ([5,10,15,30,60,120,300] as $s): ?>
           <option value="<?= $s ?>"><?= $s ?>s</option>
@@ -91,24 +93,19 @@
     </div>
 
     <!-- Pagination -->
-    <div id="pager" class="pagination" style="display:flex;gap:6px;justify-content:center;margin:16px 0">
+    <div id="pager" class="flex justify-center gap-1.5 my-6">
       <?php
         $curr = $page ?? 1;
         $max  = $pages ?? 1;
         $perQ = $per ?? 10;
         $qStr = ($q ?? '') !== '' ? '&q=' . urlencode($q) : '';
-        $window = 2; $start = max(1, $curr-$window); $end = min($max, $curr+$window);
+        $window = 1; $start = max(1, $curr-$window); $end = min($max, $curr+$window);
       ?>
   
       <?php if ($curr > 1): ?>
         <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $curr - 1 .'&per='.$perQ.$qStr ?>">&laquo; Prev</a>
       <?php else: ?>
         <span class="btn ghost" style="opacity:.5;pointer-events:none">&laquo; Prev</span>
-      <?php endif; ?>
-  
-      <?php if ($start > 1): ?>
-        <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. 1 .'&per='.$perQ.$qStr ?>">1</a>
-        <?php if ($start > 2): ?><span class="btn ghost" style="pointer-events:none">…</span><?php endif; ?>
       <?php endif; ?>
   
       <?php for ($i=$start; $i<=$end; $i++): ?>
@@ -118,11 +115,6 @@
           <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $i .'&per='.$perQ.$qStr ?>"><?= $i ?></a>
         <?php endif; ?>
       <?php endfor; ?>
-  
-      <?php if ($end < $max): ?>
-        <?php if ($end < $max-1): ?><span class="btn ghost" style="pointer-events:none">…</span><?php endif; ?>
-        <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $max .'&per='.$perQ.$qStr ?>"><?= $max ?></a>
-      <?php endif; ?>
   
       <?php if ($curr < $max): ?>
         <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $curr + 1 .'&per='.$perQ.$qStr ?>">Next &raquo;</a>

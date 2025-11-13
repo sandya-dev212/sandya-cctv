@@ -35,7 +35,7 @@
     <?= view('partials/navbar') ?>
   <?php endif; ?>
 
-  <main class="bg-[#0b1220] px-[10%] py-[5%]">
+  <main class="bg-[#0b1220] px-[10vh] py-[5vh] max-[850px]:px-[3vh] max-[850px]:py-[10vh]">
     <?= $content ?? '' ?>
   </main>
 
