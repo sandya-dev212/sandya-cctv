@@ -51,12 +51,11 @@
 
   <?php if ($data['id'] != 0): ?>
     <label for="" class="font-bold">User yang mempunyai akses:</label>
-    <div class="max-h-[28dvh] overflow-auto w-[50%]">
+    <div class="max-h-[28dvh] overflow-auto w-[50%] max-[850px]:w-full">
         <?php foreach ($users as $u): ?>
           <?php if (in_array($u['id'], $selected)): ?>
             <form action="/dashboards/<?= $data['id'] ?>/delete-access" method="POST">
              <div class="flex flex-row justify-between items-center p-3 mb-5 border-2 border-slate-400 rounded-md">
-               <p><?= esc($u['id'] ?? '') ?></p>
                <p><?= esc($u['full_name'] ?? '') ?></p>
                <input hidden name="user_id" value="<?= esc($u['id'] ?? '') ?>" />
                <button type="submit" class="font-bold bg-red-500 p-2 rounded-md hover:cursor-pointer">Remove</button>
