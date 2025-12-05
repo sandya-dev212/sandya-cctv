@@ -101,11 +101,13 @@
         $qStr = ($q ?? '') !== '' ? '&q=' . urlencode($q) : '';
         $window = 1; $start = max(1, $curr-$window); $end = min($max, $curr+$window);
       ?>
+
+      <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. 1 .'&per='.$perQ.$qStr ?>">Start</a>
   
       <?php if ($curr > 1): ?>
-        <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $curr - 1 .'&per='.$perQ.$qStr ?>">&laquo; Prev</a>
+        <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $curr - 1 .'&per='.$perQ.$qStr ?>">&laquo;</a>
       <?php else: ?>
-        <span class="btn ghost" style="opacity:.5;pointer-events:none">&laquo; Prev</span>
+        <span class="btn ghost" style="opacity:.5;pointer-events:none">&laquo;</span>
       <?php endif; ?>
   
       <?php for ($i=$start; $i<=$end; $i++): ?>
@@ -117,10 +119,13 @@
       <?php endfor; ?>
   
       <?php if ($curr < $max): ?>
-        <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $curr + 1 .'&per='.$perQ.$qStr ?>">Next &raquo;</a>
+        <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $curr + 1 .'&per='.$perQ.$qStr ?>">&raquo;</a>
       <?php else: ?>
-        <span class="btn ghost" style="opacity:.5;pointer-events:none">Next &raquo;</span>
+        <span class="btn ghost" style="opacity:.5;pointer-events:none">&raquo;</span>
       <?php endif; ?>
+
+      <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $max .'&per='.$perQ.$qStr ?>">End</a>
+
     </div>
 
     <!-- Modal for make selected grid camera 'full screen' (this component will be used when user select one of the camera grids in the dashboard) -->
@@ -357,6 +362,15 @@
     }).compact();
   }
 
+  function setGridStatic() {
+    const currentViewportWidth = window.innerWidth;
+    if (currentViewportWidth <= 850) {
+      grid.setStatic(true);
+    } else {
+      grid.setStatic(false);
+    }
+  }
+
   // Make the selected camera grid full screen in dashboard
   function fsTile(ev, btn, type){
     ev.stopPropagation();
@@ -453,6 +467,7 @@
   
   $(document).ready(() => {
     initGrid();
+    setGridStatic();
     initVideos();
   })
 
