@@ -16,8 +16,11 @@ class Dashboard extends BaseController
         $this->db = db_connect();
     }
 
-    public function index($id)
+    public function index()
     {
+
+        $id = $this->request->getGet('id') ?? 0;
+
         if (!session('isLoggedIn')) {
             return redirect()->to('/login');
         }
@@ -39,12 +42,12 @@ class Dashboard extends BaseController
 
         $dashIds = array_column($getUserDash, 'dashboard_id');
 
-        // This code is too redirect the button "Dashboard" in Views/partials/navbar.php
-        // Since the default href of the "Dashboard" button is 'dashboard/0'
-        // So, when user click the dashboard button in navbar, the user will be redirected to thers own dashboard
+        // This code is to redirect the button "Dashboard" in Views/partials/navbar.php
+        // Since the default href of the "Dashboard" button is 'dashboard?id=0'
+        // So, when user click the dashboard button in navbar, the user will be redirected to theirs own dashboard
         // This code is not affected the super admin user
         if ($id == 0 && $role == 'user') {
-            return redirect()->to('/dashboard/' . $dashAccess[0]['id']);
+            return redirect()->to('/dashboard?id=' . $dashAccess[0]['id']);
         }
         
         // This code is to prevent the user to opening the dashboard id that doesn't assigned to him by manually type the dashboard id in the URL path
