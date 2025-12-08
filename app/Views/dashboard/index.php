@@ -6,7 +6,7 @@
     <div class="flex flex-row gap-3">
       
       <?php foreach($dashAccess as $dash):?>
-        <a href="/dashboard/<?= $dash['id'] ?>" class="text-white hover:cursor-pointer p-2 rounded-md <?= $curDashId == $dash['id'] ? 'bg-slate-400' : 'bg-slate-600' ?>"> <?= $dash['name']?> </a>
+        <a href="/dashboard?id=<?= $dash['id'] ?>" class="text-white hover:cursor-pointer p-2 rounded-md <?= $curDashId == $dash['id'] ? 'bg-slate-400' : 'bg-slate-600' ?>"> <?= $dash['name']?> </a>
       <?php endforeach;?>
     </div>
 
@@ -20,13 +20,14 @@
 
   <div class="w-full flex justify-between max-[850px]:flex-col">
     
-    <form method="get" action="/dashboard/<?= $curDashId ?>" id="flt" class="flex flex-col gap-3 mb-10">
+    <form method="get" action="/dashboard?id=<?= $curDashId ?>" id="flt" class="flex flex-col gap-3 mb-10">
+      <input type="hidden" name="id" value="<?= (int)($dash['id'] ?? 0) ?>" >
       <div class="flex gap-3 max-[850px]:flex-col">
         <input type="text" name="q" value="<?= esc($q ?? '') ?>" placeholder="Cari alias/NVR/monitor..." style="min-width:240px" class="bg-slate-800 p-2 rounded-md">
         <input type="hidden" name="page" value="<?= (int)($page ?? 1) ?>" >
         <div class="flex flex-row gap-3">
           <button class="btn rounded-md bg-blue-500 hover:bg-blue-400 hover:cursor-pointer max-[850px]:w-full" type="submit">Search</button>
-          <a class="btn text-center" href="/dashboard/0" style="background:#ef4444">Reset</a>
+          <a class="btn text-center" href="/dashboard?id=0" style="background:#ef4444">Reset</a>
         </div>
       </div>
       
@@ -102,10 +103,10 @@
         $window = 1; $start = max(1, $curr-$window); $end = min($max, $curr+$window);
       ?>
 
-      <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. 1 .'&per='.$perQ.$qStr ?>">Start</a>
+      <a class="btn ghost" href="<?= '/dashboard?id=' . $curDashId . '&page='. 1 .'&per='.$perQ.$qStr ?>">Start</a>
   
       <?php if ($curr > 1): ?>
-        <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $curr - 1 .'&per='.$perQ.$qStr ?>">&laquo;</a>
+        <a class="btn ghost" href="<?= '/dashboard?id=' . $curDashId . '&page='. $curr - 1 .'&per='.$perQ.$qStr ?>">&laquo;</a>
       <?php else: ?>
         <span class="btn ghost" style="opacity:.5;pointer-events:none">&laquo;</span>
       <?php endif; ?>
@@ -114,22 +115,22 @@
         <?php if ($i === $curr): ?>
           <span class="btn" style="pointer-events:none"><?= $i ?></span>
         <?php else: ?>
-          <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $i .'&per='.$perQ.$qStr ?>"><?= $i ?></a>
+          <a class="btn ghost" href="<?= '/dashboard?id=' . $curDashId . '&page='. $i .'&per='.$perQ.$qStr ?>"><?= $i ?></a>
         <?php endif; ?>
       <?php endfor; ?>
   
       <?php if ($curr < $max): ?>
-        <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $curr + 1 .'&per='.$perQ.$qStr ?>">&raquo;</a>
+        <a class="btn ghost" href="<?= '/dashboard?id=' . $curDashId . '&page='. $curr + 1 .'&per='.$perQ.$qStr ?>">&raquo;</a>
       <?php else: ?>
         <span class="btn ghost" style="opacity:.5;pointer-events:none">&raquo;</span>
       <?php endif; ?>
 
-      <a class="btn ghost" href="<?= '/dashboard/' . $curDashId . '?page='. $max .'&per='.$perQ.$qStr ?>">End</a>
+      <a class="btn ghost" href="<?= '/dashboard?id=' . $curDashId . '&page='. $max .'&per='.$perQ.$qStr ?>">End</a>
 
     </div>
 
     <!-- Modal for make selected grid camera 'full screen' (this component will be used when user select one of the camera grids in the dashboard) -->
-    <div id="modalSlide" class="bg-black fixed hidden top-0 left-0 right-0 bottom-0 z-99 items-center justify-center">
+    <div id="modalSlide" class="bg-black fixed hidden inset-0 z-99 items-center justify-center">
       <div id="modalSlideBody" class="relative w-[85%]"></div>
     </div>
   </div>
@@ -180,6 +181,7 @@
   let isPlay = true; 
   let customCellHeight = '10vh';
   let arrayCamera = [];
+  const currentViewportWidth = window.innerWidth;
   
   // Function to render camera grid inside the slideshow mode
   function renderSlide() {
@@ -363,7 +365,6 @@
   }
 
   function setGridStatic() {
-    const currentViewportWidth = window.innerWidth;
     if (currentViewportWidth <= 850) {
       grid.setStatic(true);
     } else {
@@ -380,7 +381,11 @@
       let id = $('#modalSlideBody > :first-child').attr('id');
       let closedComponent = $('#modalSlideBody > :first-child');
      
-      $('#modalSlide').removeClass('flex').addClass('hidden');
+      if (currentViewportWidth <= 850) {
+        $('#modalSlideBody').removeClass('h-[90vw]').removeClass('rotate-90').addClass('w-[85%]');
+      }
+
+      $('#modalSlide').addClass('hidden').removeClass('flex');
       isModalOpened = false;
 
       $(`[data-id="${id}"]`).html(closedComponent);
@@ -389,6 +394,10 @@
     } else {
      
       const elem = btn.closest('.cam').querySelector('.thumb');
+
+      if (currentViewportWidth <= 850) {
+        $('#modalSlideBody').removeClass('w-[85%]').addClass('rotate-90').addClass('h-[90vw]');
+      }
       
       $('#modalSlide').removeClass('hidden').addClass('flex');
       $('#modalSlideBody').html(elem);
