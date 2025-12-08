@@ -7,6 +7,9 @@ $isAuthed = (bool) session('isLoggedIn');
 
 function activeBtn(string $path): string {
     $curr = strtolower(parse_url(current_url(), PHP_URL_PATH) ?? '');
+    if (str_contains($curr, 'dashboards')) {
+      $curr = '/user-dashboards ';
+    }
     return (str_starts_with($curr, $path)) ? 'btn-nav active' : 'btn-nav';
 }
 
