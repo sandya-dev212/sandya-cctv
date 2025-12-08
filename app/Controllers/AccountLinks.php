@@ -238,7 +238,7 @@ q?.addEventListener('input',()=>{const s=q.value.toLowerCase();
         ]);
         $um->update($child['id'], ['last_login_at'=>date('Y-m-d H:i:s')]);
 
-        return redirect()->to('/dashboard/0')->with('message','Switched as '.$child['username']);
+        return redirect()->to('/dashboard?id=0')->with('message','Switched as '.$child['username']);
     }
 
     // POST /switch-to-parent
