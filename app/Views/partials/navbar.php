@@ -27,13 +27,13 @@ function activeBtnMobile(string $path): string {
 <nav>
   <div class="flex justify-between items-center gap-3.5 p-3 sticky top-0 z-10 border-b border-white backdrop-filter backdrop-blur-sm bg-opacity-10 max-[850px]:hidden">
     <div class="flex items-center gap-3 flex-wrap">
-      <a href="/dashboard/0" class="flex items-center justify-center gap-2.5 mr-3" aria-label="Home">
+      <a href="/dashboard?id=0" class="flex items-center justify-center gap-2.5 mr-3" aria-label="Home">
         <img width="100px" src="/assets/logo-white.png" alt="Sandya">
         <span class="font-extrabold text-xl text-[#a78bfa]"><span class="accent">Lensa</span></span>
       </a>
 
       <?php if (!$isLogin && $isAuthed): ?>
-        <a href="/dashboard/0"  class="<?= activeBtn('/dashboard') ?>">Dashboard</a>
+        <a href="/dashboard?id=0"  class="<?= activeBtn('/dashboard') ?>">Dashboard</a>
 
         <?php if (in_array($role, ['admin','superadmin'], true)): ?>
           <a href="/nvrs"       class="<?= activeBtn('/nvrs') ?>">NVRs</a>
@@ -68,7 +68,7 @@ function activeBtnMobile(string $path): string {
   
   <div class="min-[850px]:hidden fixed top-0 right-0 left-0 z-10">
       <div class="absolute top-0 right-0 left-0 z-40 flex flex-row justify-between items-center border-b border-white py-2 px-3 shadow-md backdrop-filter backdrop-blur-sm bg-opacity-10">
-          <a href="/dashboard/0" class="flex items-center justify-center gap-2.5 mr-3" aria-label="Home">
+          <a href="/dashboard?id=0" class="flex items-center justify-center gap-2.5 mr-3" aria-label="Home">
             <img width="100px" src="/assets/logo-white.png" alt="Sandya">
             <span class="font-extrabold text-xl text-[#a78bfa]"><span class="accent">Lensa</span></span>
           </a>
@@ -83,7 +83,7 @@ function activeBtnMobile(string $path): string {
       <div id="navOverflow" class="flex flex-col items-center justify-end w-full min-[850px]:hidden absolute top-12 z-10 shadow-md -translate-y-[120%] duration-500 ease-out transition-all mt-0" translate="no">
         <div>
           <?php if (!$isLogin && $isAuthed): ?>
-            <a href="/dashboard/0" class="inline-flex items-center gap-2 px-2 py-3 border-b border-white text-[#e5e7eb] font-bold w-full <?= activeBtnMobile('/dashboard') ?>">Dashboard</a>
+            <a href="/dashboard?id=0" class="inline-flex items-center gap-2 px-2 py-3 border-b border-white text-[#e5e7eb] font-bold w-full <?= activeBtnMobile('/dashboard') ?>">Dashboard</a>
             <?php if (in_array($role, ['admin','superadmin'], true)): ?>
               <a href="/nvrs"       class="inline-flex items-center gap-2 px-2 py-3 border-b border-white text-[#e5e7eb] font-bold w-full <?= activeBtnMobile('/nvrs') ?>">NVRs</a>
               <a href="/cameras"    class="inline-flex items-center gap-2 px-2 py-3 border-b border-white text-[#e5e7eb] font-bold w-full <?= activeBtnMobile('/cameras') ?>">Cameras</a>
