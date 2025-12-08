@@ -123,7 +123,7 @@ class Auth extends BaseController
                 }
     
                 $this->setSessionAndTouch($user);
-                return redirect()->to('/dashboard/' . $numDash);
+                return redirect()->to('/dashboard?id=' . $numDash);
             }
         }
 
