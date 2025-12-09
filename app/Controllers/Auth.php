@@ -60,7 +60,7 @@ class Auth extends BaseController
                     $numDash = $dashRows[0]['dashboard_id'];
                 }
 
-                return redirect()->to('/dashboard/' . $numDash);
+                return redirect()->to('/dashboard?id=' . $numDash);
             }
             // gagal local → lanjut ke LDAP fallback di bawah
         } else {
