@@ -30,7 +30,7 @@ class Dashboard extends BaseController
                     "page" => 0,
                     "per" => 0,
                     "q" => 0,
-                    "curDashId" => 0,
+                    "curDashId" => 'null',
                     "dashAccess" => [],
                 ]),
             ]);
