@@ -18,39 +18,41 @@
     <?php endif; ?>
   </div>
 
-  <div class="w-full flex justify-between max-[850px]:flex-col">
-    
-    <form method="get" action="/dashboard?id=<?= $curDashId ?>" id="flt" class="flex flex-col gap-3 mb-10">
-      <input type="hidden" name="id" value="<?= (int)($dash['id'] ?? 0) ?>" >
-      <div class="flex gap-3 max-[850px]:flex-col">
-        <input type="text" name="q" value="<?= esc($q ?? '') ?>" placeholder="Cari alias/NVR/monitor..." style="min-width:240px" class="bg-slate-800 p-2 rounded-md">
-        <input type="hidden" name="page" value="<?= (int)($page ?? 1) ?>" >
-        <div class="flex flex-row gap-3">
-          <button class="btn rounded-md bg-blue-500 hover:bg-blue-400 hover:cursor-pointer max-[850px]:w-full" type="submit">Search</button>
-          <a class="btn text-center" href="/dashboard?id=0" style="background:#ef4444">Reset</a>
-        </div>
-      </div>
+  <?php if (!empty($tiles)): ?>
+    <div class="w-full flex justify-between max-[850px]:flex-col">
       
-      <div class="w-full flex flex-row items-center gap-3">
-        <label for="per">Per page</label>
-        <select onchange="this.form.submit()" name="per" id="per" class="bg-slate-800 rounded-md p-2">
-          <?php foreach ([6, 12, 24, 46, 100] as $opt): ?>
-            <option value="<?= $opt ?>" <?= (isset($per) && (int)$per === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
+      <form method="get" action="/dashboard?id=<?= $curDashId ?>" id="flt" class="flex flex-col gap-3 mb-10">
+        <input type="hidden" name="id" value="<?= (int)($dash['id'] ?? 0) ?>" >
+        <div class="flex gap-3 max-[850px]:flex-col">
+          <input type="text" name="q" value="<?= esc($q ?? '') ?>" placeholder="Cari alias/NVR/monitor..." style="min-width:240px" class="bg-slate-800 p-2 rounded-md">
+          <input type="hidden" name="page" value="<?= (int)($page ?? 1) ?>" >
+          <div class="flex flex-row gap-3">
+            <button class="btn rounded-md bg-blue-500 hover:bg-blue-400 hover:cursor-pointer max-[850px]:w-full" type="submit">Search</button>
+            <a class="btn text-center" href="/dashboard?id=0" style="background:#ef4444">Reset</a>
+          </div>
+        </div>
+        
+        <div class="w-full flex flex-row items-center gap-3">
+          <label for="per">Per page</label>
+          <select onchange="this.form.submit()" name="per" id="per" class="bg-slate-800 rounded-md p-2">
+            <?php foreach ([6, 12, 24, 46, 100] as $opt): ?>
+              <option value="<?= $opt ?>" <?= (isset($per) && (int)$per === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+      </form>
+  
+      <div class="flex flex-row items-center gap-3 mb-5">
+        <button type="button" id="btnSlide" class="btn hover:cursor-pointer max-[850px]:w-full" style="background:#7c3aed">Slideshow Cameras</button>
+        <select id="slideMsSel" title="Interval slideshow (detik)" style="background:#111827;border:1px solid #1f2937;color:#e5e7eb;border-radius:10px;padding:8px">
+          <?php foreach ([5,10,15,30,60,120,300] as $s): ?>
+            <option value="<?= $s ?>"><?= $s ?>s</option>
           <?php endforeach; ?>
         </select>
       </div>
-    </form>
-
-    <div class="flex flex-row items-center gap-3 mb-5">
-      <button type="button" id="btnSlide" class="btn hover:cursor-pointer max-[850px]:w-full" style="background:#7c3aed">Slideshow Cameras</button>
-      <select id="slideMsSel" title="Interval slideshow (detik)" style="background:#111827;border:1px solid #1f2937;color:#e5e7eb;border-radius:10px;padding:8px">
-        <?php foreach ([5,10,15,30,60,120,300] as $s): ?>
-          <option value="<?= $s ?>"><?= $s ?>s</option>
-        <?php endforeach; ?>
-      </select>
+  
     </div>
-
-  </div>
+  <?php endif; ?>
 </div>
 
 <?php if (empty($tiles)): ?>
