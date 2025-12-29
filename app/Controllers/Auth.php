@@ -56,9 +56,15 @@ class Auth extends BaseController
                 // Set the dashboard id
                 if (in_array($user['role'], ['superadmin', 'admin'])) {
                     $numDash = 0;
+                } elseif (count($dashRows) == 0) {
+                    // For the user who first time doing login and their account has not connected to any dashboard yet
+                    $numDash = "null";
                 } else {
                     $numDash = $dashRows[0]['dashboard_id'];
                 }
+
+                // Set the dashId value inside the session. This value will be used for the dashboard link in the navbar
+                session()->set('dashId', $numDash);
 
                 return redirect()->to('/dashboard?id=' . $numDash);
             }
@@ -118,10 +124,16 @@ class Auth extends BaseController
 
                 if (in_array($user['role'], ['superadmin', 'admin'])) {
                     $numDash = 0;
+                } elseif (count($dashRows) == 0) {
+                    // For the user who first time doing login and their account has not connected to any dashboard yet
+                    $numDash = "null";
                 } else {
                     $numDash = $dashRows[0]['dashboard_id'];
                 }
-    
+
+                // Set the dashId value inside the session. This value will be used for the dashboard link in the navbar
+                session()->set('dashId', $numDash);
+
                 $this->setSessionAndTouch($user);
                 return redirect()->to('/dashboard?id=' . $numDash);
             }
