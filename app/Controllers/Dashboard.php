@@ -18,8 +18,23 @@ class Dashboard extends BaseController
 
     public function index()
     {
+        $id = $this->request->getGet("id");
 
-        $id = $this->request->getGet('id') ?? 0;
+        if ($id == "null") {
+            return view("layout/main", [
+                "title" => "Dashboard",
+                "content" => view("dashboard/index", [
+                    "tiles" => 0,
+                    "total" => 0,
+                    "pages" => 0,
+                    "page" => 0,
+                    "per" => 0,
+                    "q" => 0,
+                    "curDashId" => 0,
+                    "dashAccess" => [],
+                ]),
+            ]);
+        }
 
         if (!session('isLoggedIn')) {
             return redirect()->to('/login');
@@ -46,7 +61,7 @@ class Dashboard extends BaseController
         // Since the default href of the "Dashboard" button is 'dashboard?id=0'
         // So, when user click the dashboard button in navbar, the user will be redirected to theirs own dashboard
         // This code is not affected the super admin user
-        if ($id == 0 && $role == 'user') {
+        if ($id === 0 && $role == 'user') {
             return redirect()->to('/dashboard?id=' . $dashAccess[0]['id']);
         }
         
